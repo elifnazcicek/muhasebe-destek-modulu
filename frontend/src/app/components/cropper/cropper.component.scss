@@ -1,0 +1,55 @@
+.cropper-container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.canvas-wrapper {
+  position: relative;
+  display: inline-block;
+  border-radius: 8px;
+  overflow: hidden;
+  cursor: crosshair;
+  touch-action: none; /* Mobilde sürükleme için */
+
+  canvas {
+    display: block;
+    max-width: 100%;
+  }
+
+  .overlay-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+}
+
+.hint {
+  color: #8b949e;
+  font-size: 0.8rem;
+  text-align: center;
+  margin: 0.5rem 0;
+}
+
+.cropper-controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  justify-content: center;
+}
+
+.btn {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: opacity 0.2s;
+
+  &:hover { opacity: 0.85; }
+}
+
+.btn-success   { background: #2ec4b6; color: #fff; }
+.btn-secondary { background: #6c757d; color: #fff; }

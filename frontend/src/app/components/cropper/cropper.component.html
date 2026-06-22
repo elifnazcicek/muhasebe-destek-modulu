@@ -1,0 +1,26 @@
+<div class="cropper-container" *ngIf="imageUrl">
+
+  <!-- Görseller (alt alta katman) -->
+  <div class="canvas-wrapper">
+    <canvas #cropperCanvas></canvas>
+    <canvas #overlayCanvas class="overlay-canvas"
+            (pointerdown)="onPointerDown($event)"
+            (pointermove)="onPointerMove($event)"
+            (pointerup)="onPointerUp()"
+            (pointercancel)="onPointerUp()">
+    </canvas>
+  </div>
+
+  <p class="hint">Köşe noktalarını sürükleyerek belge sınırlarını ayarlayın.</p>
+
+  <!-- Kontrol Butonları -->
+  <div class="cropper-controls">
+    <button class="btn btn-success" (click)="applyCrop()">
+      ✂️ Kırp ve Uygula
+    </button>
+    <button class="btn btn-secondary" (click)="cancel()">
+      ↩️ İptal
+    </button>
+  </div>
+
+</div>

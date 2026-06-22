@@ -1,0 +1,159 @@
+<div class="camera-container">
+
+  <!-- Hata Mesajı -->
+  @if (errorMessage()) {
+    <div class="error-banner">
+      <span>⚠️ {{ errorMessage() }}</span>
+      <button class="error-close" (click)="errorMessage.set(null)">✕</button>
+    </div>
+  }
+
+  <!-- ========== CROPPER MODU ========== -->
+  @if (showCropper()) {
+    <app-cropper
+      [imageUrl]="cropperImageUrl()"
+      (cropped)="onCropped($event)"
+      (cancelled)="onCropCancelled()">
+    </app-cropper>
+  }
+
+  <!-- ========== NORMAL MOD ========== -->
+  @if (!showCropper()) {
+
+    <!-- Kamera ve Çözünürlük Seçici -->
+    <div class="settings-bar">
+      @if (availableCameras().length > 1) {
+        <select class="select-input" (change)="onCameraChange($event)">
+          @for (cam of availableCameras(); track cam.deviceId) {
+            <option [value]="cam.deviceId"
+                    [selected]="cam.deviceId === selectedCameraId()">
+              {{ cam.label || 'Kamera ' + ($index + 1) }}
+            </option>
+          }
+        </select>
+      }
+
+      <select class="select-input" (change)="onResolutionChange($event)">
+        @for (res of resolutions; track res.label; let i = $index) {
+          <option [value]="i">{{ res.label }}</option>
+        }
+      </select>
+
+      <label class="batch-toggle">
+        <input type="checkbox" [checked]="batchMode()" (change)="toggleBatchMode()" />
+        Toplu Tarama
+      </label>
+    </div>
+
+    <!-- Video / Önizleme / Drop Zone -->
+    <div class="video-wrapper"
+         [class.drag-over]="isDragOver()"
+         (dragover)="onDragOver($event)"
+         (dragleave)="onDragLeave($event)"
+         (drop)="onDrop($event)">
+
+      <!-- Webcam Video -->
+      <video #videoElement autoplay playsinline muted
+             [class.hidden]="!cameraActive() || previewUrl()">
+      </video>
+
+      <!-- İşlenmiş Görsel Önizleme -->
+      @if (previewUrl() && !cameraActive()) {
+        <img [src]="previewUrl()" alt="İşlenmiş fiş" class="preview-image" />
+      }
+
+      <!-- Placeholder (hiçbir şey yokken) -->
+      @if (!cameraActive() && !previewUrl()) {
+        <div class="placeholder">
+          <span class="placeholder-icon">📷</span>
+          <p>Kamerayı açın veya fişi sürükleyip bırakın</p>
+          <p class="placeholder-sub">JPEG, PNG, WebP, BMP desteklenir</p>
+        </div>
+      }
+
+      <!-- Drag-over overlay -->
+      @if (isDragOver()) {
+        <div class="drop-overlay">
+          <span class="drop-icon">📥</span>
+          <p>Dosyayı bırakın</p>
+        </div>
+      }
+
+      <!-- Yükleme Animasyonu -->
+      @if (isProcessing()) {
+        <div class="loading-overlay">
+          <div class="spinner"></div>
+        </div>
+      }
+    </div>
+
+    <!-- Kontrol Butonları -->
+    <div class="controls">
+      @if (!cameraActive()) {
+        <button class="btn btn-primary" (click)="startCamera()" [disabled]="isProcessing()">
+          📷 Kamerayı Aç
+        </button>
+      } @else {
+        <button class="btn btn-danger" (click)="stopCamera()">
+          ⏹️ Kapat
+        </button>
+        <button class="btn btn-success" (click)="captureForCrop()" [disabled]="isProcessing()">
+          ✂️ Çek ve Kırp
+        </button>
+        <button class="btn btn-accent" (click)="captureAndProcess()" [disabled]="isProcessing()">
+          ⚡ Hızlı Çekim
+        </button>
+      }
+
+      <button class="btn btn-secondary" (click)="openFileSelector()" [disabled]="isProcessing()">
+        📁 Dosya Yükle
+      </button>
+
+      <input #fileInput type="file" accept="image/jpeg,image/png,image/webp,image/bmp"
+             multiple (change)="onFileSelected($event)" class="hidden-input" />
+    </div>
+
+    <!-- Çoklu Tarama Sonuçları -->
+    @if (batchMode() && batchResults().length > 0) {
+      <div class="batch-panel">
+        <div class="batch-header">
+          <h4>📑 Toplu Tarama ({{ batchResults().length }} fiş)</h4>
+          <button class="btn btn-small btn-danger" (click)="clearBatch()">Temizle</button>
+        </div>
+        <div class="batch-grid">
+          @for (item of batchResults(); track item.timestamp) {
+            <div class="batch-item">
+              <img [src]="item.previewUrl" alt="Fiş" />
+              <span class="batch-meta">{{ item.sizeKb }} KB · {{ item.timestamp }}</span>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- İşlem Logları -->
+    @if (processingLogs().length > 0) {
+      <div class="log-panel">
+        <h4>📋 İşlem Logları</h4>
+        <div class="log-entries">
+          @for (log of processingLogs(); track log) {
+            <div class="log-entry">{{ log }}</div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Backend Yanıtı -->
+    @if (uploadResult()?.success) {
+      <div class="result-panel">
+        <h4>✅ Backend Yanıtı</h4>
+        <table>
+          <tr><td>Orijinal</td><td>{{ uploadResult().data.original.sizeKb }} KB</td></tr>
+          <tr><td>İşlenmiş</td><td>{{ uploadResult().data.processed.sizeKb }} KB</td></tr>
+          <tr><td>Sıkıştırma</td><td>{{ uploadResult().data.compressionRatio }}</td></tr>
+        </table>
+      </div>
+    }
+
+  }
+</div>

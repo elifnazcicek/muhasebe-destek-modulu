@@ -1,0 +1,266 @@
+/* =============================================================================
+   Kamera Component Stilleri (Güncellenmiş)
+   Drag-drop, kamera seçici, toplu tarama grid, cropper entegrasyonu
+   ============================================================================= */
+
+.camera-container {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 1rem;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+}
+
+/* ---- Ayarlar Çubuğu (Kamera + Çözünürlük Seçici) ---- */
+.settings-bar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.select-input {
+  padding: 0.4rem 0.6rem;
+  border: 1px solid #30363d;
+  border-radius: 6px;
+  background: #161b22;
+  color: #c9d1d9;
+  font-size: 0.8rem;
+  cursor: pointer;
+
+  &:focus { border-color: #58a6ff; outline: none; }
+}
+
+.batch-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #c9d1d9;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: auto;
+
+  input[type="checkbox"] {
+    accent-color: #2ec4b6;
+    cursor: pointer;
+  }
+}
+
+/* ---- Video / Drop Zone ---- */
+.video-wrapper {
+  position: relative;
+  background: #1a1a2e;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+
+  &.drag-over {
+    border-color: #58a6ff;
+    background: #161b22;
+  }
+
+  video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .preview-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+  }
+}
+
+.placeholder {
+  text-align: center;
+  color: #8888aa;
+  user-select: none;
+
+  .placeholder-icon { font-size: 4rem; display: block; margin-bottom: 0.5rem; }
+  .placeholder-sub { font-size: 0.75rem; color: #555; margin-top: 0.25rem; }
+}
+
+/* ---- Drag-over Overlay ---- */
+.drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(88, 166, 255, 0.15);
+  border: 3px dashed #58a6ff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: #58a6ff;
+  z-index: 10;
+
+  .drop-icon { font-size: 3rem; }
+  p { font-size: 1rem; margin-top: 0.5rem; }
+}
+
+/* ---- Yükleme Animasyonu ---- */
+.loading-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 15;
+
+  .spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: #fff;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---- Kontrol Butonları ---- */
+.controls {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.btn {
+  padding: 0.55rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+
+  &:hover:not(:disabled) { opacity: 0.85; }
+  &:active:not(:disabled) { transform: scale(0.97); }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
+}
+
+.btn-primary   { background: #4361ee; color: #fff; }
+.btn-danger    { background: #e63946; color: #fff; }
+.btn-success   { background: #2ec4b6; color: #fff; }
+.btn-accent    { background: #f77f00; color: #fff; }
+.btn-secondary { background: #6c757d; color: #fff; }
+.btn-small     { padding: 0.3rem 0.7rem; font-size: 0.75rem; }
+
+.hidden-input { display: none; }
+.hidden { display: none; }
+
+/* ---- Hata Banner ---- */
+.error-banner {
+  background: #ff6b6b15;
+  border: 1px solid #e63946;
+  color: #e63946;
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  margin-bottom: 0.75rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .error-close {
+    background: none;
+    border: none;
+    color: #e63946;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+}
+
+/* ---- Toplu Tarama Paneli ---- */
+.batch-panel {
+  margin-top: 1rem;
+  background: #0d1117;
+  border: 1px solid #30363d;
+  border-radius: 8px;
+  padding: 1rem;
+
+  .batch-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+
+    h4 { color: #c9d1d9; margin: 0; font-size: 0.9rem; }
+  }
+
+  .batch-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 0.5rem;
+  }
+
+  .batch-item {
+    border-radius: 6px;
+    overflow: hidden;
+    border: 1px solid #21262d;
+    background: #161b22;
+
+    img {
+      width: 100%;
+      aspect-ratio: 3 / 4;
+      object-fit: cover;
+    }
+
+    .batch-meta {
+      display: block;
+      padding: 4px;
+      font-size: 0.65rem;
+      color: #8b949e;
+      text-align: center;
+    }
+  }
+}
+
+/* ---- Log Paneli ---- */
+.log-panel {
+  margin-top: 1rem;
+  background: #0d1117;
+  border-radius: 8px;
+  padding: 1rem;
+
+  h4 { color: #c9d1d9; margin: 0 0 0.5rem 0; font-size: 0.9rem; }
+
+  .log-entries { max-height: 180px; overflow-y: auto; }
+
+  .log-entry {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.72rem;
+    color: #58a6ff;
+    padding: 2px 0;
+    border-bottom: 1px solid #21262d;
+  }
+}
+
+/* ---- Backend Yanıt Paneli ---- */
+.result-panel {
+  margin-top: 1rem;
+  background: #0d1117;
+  border: 1px solid #238636;
+  border-radius: 8px;
+  padding: 1rem;
+
+  h4 { color: #3fb950; margin: 0 0 0.5rem 0; font-size: 0.9rem; }
+
+  table {
+    width: 100%;
+    color: #c9d1d9;
+    font-size: 0.85rem;
+
+    td {
+      padding: 4px 8px;
+      border-bottom: 1px solid #21262d;
+      &:first-child { color: #8b949e; }
+    }
+  }
+}

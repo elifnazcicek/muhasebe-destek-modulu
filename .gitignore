@@ -1,0 +1,41 @@
+# =============================================
+# Fiş/Fatura OCR Sistemi - .gitignore
+# .NET 9.0 + Angular 20.x Stack
+# =============================================
+
+# ---- .NET / C# ----
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.dll
+*.exe
+*.pdb
+publish/
+
+# NuGet
+*.nupkg
+**/packages/*
+
+# Yüklenen ve işlenen görseller (her makinede farklı)
+uploads/
+processed/
+
+# ---- Angular / Node.js ----
+node_modules/
+dist/
+.angular/
+*.tsbuildinfo
+
+# ---- Genel ----
+*.log
+.env
+.env.*
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
