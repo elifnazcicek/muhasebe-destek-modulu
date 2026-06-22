@@ -1,1 +1,163 @@
-/* You can add global styles to this file, and also import other style files */
+/* ==========================================
+   SmartReceipt - Clean Professional Stylesheet
+   ========================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap');
+
+:root {
+    --bg-main: #f1f5f9;            /* Slate 100 - Soft Light Background */
+    --panel-bg: #ffffff;          /* Pure White for panels */
+    --panel-border: #e2e8f0;      /* Slate 200 - Soft borders */
+    --input-bg: #ffffff;
+    --input-border: #cbd5e1;      /* Slate 300 */
+    
+    /* Corporate Color Palette */
+    --color-primary: #4f46e5;       /* Indigo 600 */
+    --color-primary-hover: #4338ca; /* Indigo 700 */
+    --color-accent: #059669;        /* Emerald 700 */
+    --color-accent-hover: #047857;  /* Emerald 800 */
+    --color-danger: #dc2626;        /* Red 600 */
+    --color-danger-hover: #b91c1c;  /* Red 700 */
+    --color-warning: #d97706;       /* Amber 600 */
+    
+    --text-main: #0f172a;           /* Slate 900 */
+    --text-muted: #475569;          /* Slate 600 */
+    --text-light: #94a3b8;          /* Slate 400 */
+    
+    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+    
+    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    min-height: 100vh;
+    overflow-x: hidden;
+    line-height: 1.5;
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+}
+
+/* Common Buttons */
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 16px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: var(--transition);
+    font-family: inherit;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-primary {
+    background-color: var(--color-primary);
+    color: #ffffff;
+}
+
+.btn-primary:hover:not(:disabled) {
+    background-color: var(--color-primary-hover);
+}
+
+.btn-accent {
+    background-color: var(--color-accent);
+    color: #ffffff;
+}
+
+.btn-accent:hover:not(:disabled) {
+    background-color: var(--color-accent-hover);
+}
+
+.btn-danger {
+    background-color: var(--color-danger);
+    color: #ffffff;
+}
+
+.btn-danger:hover:not(:disabled) {
+    background-color: var(--color-danger-hover);
+}
+
+.btn-secondary {
+    background-color: #f8fafc;
+    color: var(--text-muted);
+    border-color: var(--panel-border);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    background-color: #f1f5f9;
+    color: var(--text-main);
+}
+
+.btn-outline {
+    background-color: transparent;
+    color: var(--text-muted);
+    border-color: var(--input-border);
+}
+
+.btn-outline:hover:not(:disabled) {
+    background-color: #f8fafc;
+    color: var(--text-main);
+    border-color: var(--text-muted);
+}
+
+.btn-block {
+    width: 100%;
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    border-radius: 6px;
+}
+
+.btn-xs {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+    border-radius: 4px;
+}
+
+/* Spinner */
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 3px solid rgba(79, 70, 229, 0.1);
+    border-radius: 50%;
+    border-top-color: var(--color-primary);
+    animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
