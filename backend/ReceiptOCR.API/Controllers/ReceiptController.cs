@@ -142,9 +142,13 @@ public class ReceiptController : ControllerBase
 
         try
         {
-            using var ms = new MemoryStream();
-            await file.CopyToAsync(ms);
-            var imageBytes = ms.ToArray();
+            // 1. Önce görüntüyü işle (döndürme, kırpma, netleştirme)
+            using var stream = file.OpenReadStream();
+            var preprocessResult = await _preprocessingService.ProcessAsync(stream, file.FileName);
+
+            // 2. İşlenmiş dosyayı diskten oku
+            var processedFilePath = Path.Combine(_preprocessingService.GetProcessedDir(), preprocessResult.ProcessedFileName);
+            var imageBytes = await System.IO.File.ReadAllBytesAsync(processedFilePath);
 
             var result = await _geminiService.ScanReceiptAsync(imageBytes);
 
