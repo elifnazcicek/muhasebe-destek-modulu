@@ -47,6 +47,7 @@ JSON Şeması:
 ""kdv_orani_yuzde"": 20,
 ""toplam_tutar"": 150.50
 }";
+}";
 
             var payload = new
             {
@@ -67,6 +68,10 @@ JSON Şeması:
                             }
                         }
                     }
+                },
+                generationConfig = new
+                {
+                    responseMimeType = "application/json"
                 }
             };
 
