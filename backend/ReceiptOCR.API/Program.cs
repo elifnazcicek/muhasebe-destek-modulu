@@ -138,6 +138,43 @@ try
     var app = builder.Build();
 
     // =============================================================================
+    // Veritabanı Otomatik Oluşturma ve Seed (Her bilgisayarda sorunsuz çalışması için)
+    // =============================================================================
+    using (var scope = app.Services.CreateScope())
+    {
+        var db = scope.ServiceProvider.GetRequiredService<ReceiptOCR.API.Data.ReceiptDbContext>();
+        try
+        {
+            // Veritabanı yoksa otomatik oluşturur (Tablolar dahil)
+            db.Database.EnsureCreated();
+            
+            // Eğer hiç kullanıcı yoksa varsayılan stajyer ve admin hesaplarını oluştur
+            if (!db.Users.Any())
+            {
+                using var sha256 = System.Security.Cryptography.SHA256.Create();
+                var hashPassword = (string pass) => 
+                {
+                    var bytes = sha256.ComputeHash(System.Text.Encoding.UTF8.GetBytes(pass));
+                    var strBuilder = new System.Text.StringBuilder();
+                    foreach (var b in bytes) strBuilder.Append(b.ToString("x2"));
+                    return strBuilder.ToString();
+                };
+
+                db.Users.AddRange(
+                    new ReceiptOCR.API.Models.User { Username = "stajyer", PasswordHash = hashPassword("123456"), FullName = "Stajyer Kullanıcı", Role = "User", IsActive = true, CreatedDate = DateTime.UtcNow },
+                    new ReceiptOCR.API.Models.User { Username = "admin", PasswordHash = hashPassword("admin123"), FullName = "Sistem Yöneticisi", Role = "Admin", IsActive = true, CreatedDate = DateTime.UtcNow }
+                );
+                db.SaveChanges();
+                Log.Information("Veritabanı oluşturuldu ve varsayılan kullanıcılar eklendi.");
+            }
+        }
+        catch (Exception ex)
+        {
+            Log.Error(ex, "Veritabanı oluşturulurken hata meydana geldi. SQL Server bağlantınızı kontrol edin.");
+        }
+    }
+
+    // =============================================================================
     // Middleware Pipeline
     // =============================================================================
 
