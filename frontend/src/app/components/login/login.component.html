@@ -16,7 +16,7 @@
       <span>✓ {{ successMessage }}</span>
     </div>
 
-    <form (ngSubmit)="onSubmit()" class="login-form">
+    <form (submit)="onSubmit(); $event.preventDefault();" class="login-form">
       <div class="form-group">
         <label for="username">Kullanıcı Adı</label>
         <div class="input-with-icon">
