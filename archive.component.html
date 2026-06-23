@@ -1,0 +1,64 @@
+<div class="archive-container">
+  <div class="header-section">
+    <h1>Fatura & Fiş Arşivi</h1>
+    <p>Kayıtlı önceki faturalara erişin, arama yapın ve faturaları düzenleyin.</p>
+  </div>
+
+  <div class="archive-controls glassmorphic">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" [(ngModel)]="searchQuery" (input)="filterReceipts()" placeholder="Mağaza adı, tarih veya fiş no ile ara..." />
+    </div>
+    
+    <button class="btn btn-secondary" (click)="downloadExcel()">
+      <span>⬇</span> Excel Tablosunu İndir
+    </button>
+  </div>
+
+  <!-- Loading State -->
+  <div *ngIf="loading" class="state-container">
+    <div class="spinner"></div>
+    <p>Faturalar yükleniyor...</p>
+  </div>
+
+  <!-- Error State -->
+  <div *ngIf="errorMessage" class="state-container error-state">
+    <p>{{ errorMessage }}</p>
+    <button class="btn btn-outline btn-sm" (click)="fetchReceipts()">Yeniden Dene</button>
+  </div>
+
+  <!-- Empty State -->
+  <div *ngIf="!loading && !errorMessage && filteredReceipts.length === 0" class="state-container">
+    <p>Kayıtlı fatura bulunamadı.</p>
+  </div>
+
+  <!-- Results Table -->
+  <div class="table-card glassmorphic" *ngIf="!loading && !errorMessage && filteredReceipts.length > 0">
+    <table class="archive-table">
+      <thead>
+        <tr>
+          <th style="width: 8%;">Fiş No</th>
+          <th style="width: 32%;">Mağaza Adı</th>
+          <th style="width: 15%;">Fiş Tarihi</th>
+          <th style="width: 12%; text-align: right;">KDV Tutarı</th>
+          <th style="width: 15%; text-align: right;">Toplam Tutar</th>
+          <th style="width: 13%;">Kayıt Tarihi</th>
+          <th style="width: 5%; text-align: center;">İşlem</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let receipt of filteredReceipts">
+          <td class="id-cell">#{{ receipt.id }}</td>
+          <td class="merchant-cell">{{ receipt.merchantName }}</td>
+          <td>{{ receipt.receiptDate }}</td>
+          <td class="text-right">{{ receipt.taxAmount | number:'1.2-2' }} TL</td>
+          <td class="text-right total-cell">{{ receipt.totalAmount | number:'1.2-2' }} TL</td>
+          <td class="date-cell">{{ receipt.createdAt }}</td>
+          <td style="text-align: center;">
+            <button class="btn btn-accent btn-xs" (click)="editReceipt(receipt.id)">Düzenle</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

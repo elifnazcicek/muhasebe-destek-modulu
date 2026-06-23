@@ -1,0 +1,102 @@
+<div class="login-wrapper">
+  <div class="login-card">
+    <div class="login-header">
+      <span class="logo-icon">🧾</span>
+      <h2>SmartReceipt</h2>
+      <p>{{ mode === 'login' ? 'Lütfen devam etmek için giriş yapınız' : 'Yeni bir kullanıcı profili oluşturun' }}</p>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="errorMessage" class="login-error-alert">
+      <span>⚠️ {{ errorMessage }}</span>
+    </div>
+
+    <!-- Success Message -->
+    <div *ngIf="successMessage" class="login-success-alert">
+      <span>✓ {{ successMessage }}</span>
+    </div>
+
+    <form (submit)="onSubmit(); $event.preventDefault();" class="login-form">
+      <div class="form-group">
+        <label for="username">Kullanıcı Adı</label>
+        <div class="input-with-icon">
+          <span class="field-icon">👤</span>
+          <input 
+            type="text" 
+            id="username" 
+            [(ngModel)]="username" 
+            name="username" 
+            required 
+            placeholder="Kullanıcı adınızı girin"
+            [disabled]="loading"
+          />
+        </div>
+      </div>
+
+
+
+      <div class="form-group">
+        <label for="password">Şifre</label>
+        <div class="input-with-icon">
+          <span class="field-icon">🔒</span>
+          <input 
+            type="password" 
+            id="password" 
+            [(ngModel)]="password" 
+            name="password" 
+            required 
+            placeholder="Şifrenizi girin"
+            [disabled]="loading"
+          />
+        </div>
+      </div>
+
+      <!-- Password Confirm Field (Only in Register Mode) -->
+      <div class="form-group" *ngIf="mode === 'register'">
+        <label for="confirmPassword">Şifre Tekrar</label>
+        <div class="input-with-icon">
+          <span class="field-icon">🔒</span>
+          <input 
+            type="password" 
+            id="confirmPassword" 
+            [(ngModel)]="confirmPassword" 
+            name="confirmPassword" 
+            required 
+            placeholder="Şifrenizi tekrar girin"
+            [disabled]="loading"
+          />
+        </div>
+      </div>
+
+      <!-- Remember Me Checkbox (Only in Login Mode) -->
+      <div class="form-group-checkbox" *ngIf="mode === 'login'">
+        <label class="checkbox-label">
+          <input 
+            type="checkbox" 
+            [(ngModel)]="rememberMe" 
+            name="rememberMe" 
+            [disabled]="loading"
+          />
+          <span>Beni Hatırla</span>
+        </label>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
+        <div class="spinner spinner-sm spinner-white" *ngIf="loading"></div>
+        <span *ngIf="!loading">{{ mode === 'login' ? 'Giriş Yap' : 'Profil Oluştur' }}</span>
+        <span *ngIf="loading">{{ mode === 'login' ? 'Giriş Yapılıyor...' : 'Profil Oluşturuluyor...' }}</span>
+      </button>
+    </form>
+
+    <div class="login-toggle-mode">
+      <p *ngIf="mode === 'login'">
+        Hesabınız yok mu? 
+        <a (click)="toggleMode()" class="toggle-link">Profil Oluştur</a>
+      </p>
+      <p *ngIf="mode === 'register'">
+        Zaten hesabınız var mı? 
+        <a (click)="toggleMode()" class="toggle-link">Giriş Yap</a>
+      </p>
+    </div>
+  </div>
+</div>

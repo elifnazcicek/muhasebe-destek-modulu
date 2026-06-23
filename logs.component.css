@@ -1,0 +1,236 @@
+.logs-container {
+  padding: 1.5rem;
+  max-width: 1600px;
+  margin: 0 auto;
+}
+
+.header-section {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+
+.header-section h1 {
+  font-size: 2.2rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 0.5rem;
+}
+
+.header-section p {
+  color: #a0aec0;
+  font-size: 1.1rem;
+}
+
+.logs-grid {
+  display: grid;
+  grid-template-columns: 1fr 2.5fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+@media (max-width: 1024px) {
+  .logs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.panel {
+  border-radius: 16px;
+  padding: 1.5rem;
+  min-height: 600px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+}
+
+/* Sidebar Backups */
+.backups-panel {
+  background: rgba(22, 27, 34, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.backup-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.backup-status {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  background: rgba(0, 242, 254, 0.15);
+  color: #00f2fe;
+  font-size: 0.9rem;
+  text-align: center;
+  border: 1px solid rgba(0, 242, 254, 0.3);
+}
+
+.backups-list-container {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.backups-list-container h3 {
+  font-size: 1rem;
+  color: #a0aec0;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.backups-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  overflow-y: auto;
+  max-height: 350px;
+}
+
+.backups-list li {
+  padding: 0.75rem 1rem;
+  background: rgba(13, 17, 23, 0.5);
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.2s ease;
+}
+
+.backups-list li:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.backups-list li.active {
+  background: rgba(0, 242, 254, 0.08);
+  border-color: #00f2fe;
+}
+
+.backup-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.backup-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.backups-list li.active .backup-name {
+  color: #00f2fe;
+}
+
+.backup-meta {
+  font-size: 0.75rem;
+  color: #718096;
+}
+
+.view-indicator {
+  color: #718096;
+  font-weight: 700;
+  transition: transform 0.2s ease;
+}
+
+.backups-list li:hover .view-indicator {
+  transform: translateX(3px);
+  color: #cbd5e0;
+}
+
+.no-backups {
+  text-align: center;
+  padding: 2rem;
+  color: #718096;
+  font-size: 0.9rem;
+}
+
+/* Terminal Viewer */
+.terminal-panel {
+  background: #0d1117;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border-color: rgba(255, 255, 255, 0.05);
+}
+
+.terminal-panel .panel-header {
+  background: #161b22;
+  padding: 0.75rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 0;
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+
+.terminal-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dot.red { background: #ff5f56; }
+.dot.yellow { background: #ffbd2e; }
+.dot.green { background: #27c93f; }
+
+.title-text {
+  margin-left: 0.75rem;
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: #8b949e;
+}
+
+.terminal-body {
+  flex-grow: 1;
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: 520px;
+  background: #0d1117;
+  border-bottom-left-radius: 16px;
+  border-bottom-right-radius: 16px;
+}
+
+.terminal-content {
+  font-family: 'Fira Code', 'Courier New', Courier, monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #c9d1d9;
+  white-space: pre-wrap;
+  word-break: break-all;
+  margin: 0;
+}
+
+.small-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #718096;
+}
+
+.spinner-sm {
+  width: 18px;
+  height: 18px;
+  border-width: 2px;
+}

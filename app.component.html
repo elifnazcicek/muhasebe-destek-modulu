@@ -1,0 +1,29 @@
+<div class="app-container">
+  <!-- Top Navigation Header (Only visible if logged in) -->
+  <header class="app-header" *ngIf="isLoggedIn()">
+    <div class="header-logo">
+      <span class="logo-icon">🧾</span>
+      <div>
+        <h1>SmartReceipt</h1>
+        <p>Kamera Entegreli Fiş Okuma & Veritabanı Otomasyonu</p>
+      </div>
+    </div>
+    
+    <div class="header-actions">
+      <button class="btn btn-accent" (click)="downloadExcel()" style="margin-right: 8px;">
+        <svg class="excel-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: currentColor; vertical-align: middle; margin-right: 2px;">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5H14L12 13l-2 3.5H8.2l2.9-4.7-2.7-4.3H10l1.7 3.1 1.7-3.1h1.8l-2.7 4.3 3.3 4.7zM13 9V3.5L18.5 9H13z"/>
+        </svg>
+        Excel Raporu İndir
+      </button>
+      <button class="btn btn-outline" (click)="logout()">
+        🚪 Çıkış Yap
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Content Wrapper -->
+  <main class="app-main">
+    <router-outlet></router-outlet>
+  </main>
+</div>
