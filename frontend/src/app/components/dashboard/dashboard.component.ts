@@ -100,22 +100,21 @@ export class DashboardComponent implements OnInit {
       };
       reader.readAsDataURL(file);
 
-      this.showStatus('Dosya yükleniyor ve OCR çözümleniyor...', 'info');
-      this.apiService.uploadImage(file).subscribe({
+      this.showStatus('Dosya yükleniyor ve Gemini OCR tarafından çözümleniyor...', 'info');
+      
+      // BİZİM GERÇEK .NET ENDPOINT'İMİZİ ÇAĞIRIR (/api/receipt/scan)
+      this.apiService.scanReceipt(file).subscribe({
         next: (res) => {
-          this.merchantName = res.merchant_name;
-          this.receiptDate = res.receipt_date;
-          this.totalAmount = res.total_amount;
-          this.taxAmount = res.tax_amount;
-          this.imagePath = res.image_path;
+          // Gemini'den dönen ExtractedReceiptData modeli
+          const data = res.data; 
+          this.merchantName = data.firma_adi || '';
+          this.receiptDate = data.tarih || '';
+          this.totalAmount = data.toplam_tutar || 0;
+          this.taxAmount = (data.toplam_tutar * data.kdv_orani_yuzde) / (100 + data.kdv_orani_yuzde) || 0;
+          this.imagePath = null; // Opsiyonel, sunucudan dönen yolu atayabiliriz
 
-          this.items = res.items.map((i: any) => ({
-            itemName: i.item_name,
-            quantity: i.quantity,
-            unitPrice: i.unit_price,
-            totalPrice: i.total_price,
-            taxRate: i.tax_rate
-          }));
+          // Ürün kalemlerini desteklemediğimiz için şimdilik boş bırakıyoruz
+          this.items = [];
 
           this.showPreview = true;
           this.showStatus('OCR tamamlandı!', 'success');
