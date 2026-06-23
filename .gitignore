@@ -40,3 +40,12 @@ testem.log
 # System files
 .DS_Store
 Thumbs.db
+
+# .NET Build Outputs and Logs
+backend/ReceiptOCR.API/bin/
+backend/ReceiptOCR.API/obj/
+backend/ReceiptOCR.API/logs/
+*.user
+*.userosscache
+*.sln.docstates
+
