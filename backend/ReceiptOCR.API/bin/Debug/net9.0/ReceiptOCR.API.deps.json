@@ -1,0 +1,71 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "ReceiptOCR.API/1.0.0": {
+        "dependencies": {
+          "System.Drawing.Common": "9.0.17"
+        },
+        "runtime": {
+          "ReceiptOCR.API.dll": {}
+        }
+      },
+      "Microsoft.Win32.SystemEvents/9.0.17": {
+        "runtime": {
+          "lib/net9.0/Microsoft.Win32.SystemEvents.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.1726.26416"
+          }
+        },
+        "runtimeTargets": {
+          "runtimes/win/lib/net9.0/Microsoft.Win32.SystemEvents.dll": {
+            "rid": "win",
+            "assetType": "runtime",
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.1726.26416"
+          }
+        }
+      },
+      "System.Drawing.Common/9.0.17": {
+        "dependencies": {
+          "Microsoft.Win32.SystemEvents": "9.0.17"
+        },
+        "runtime": {
+          "lib/net9.0/System.Drawing.Common.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.1726.26501"
+          },
+          "lib/net9.0/System.Private.Windows.Core.dll": {
+            "assemblyVersion": "9.0.0.0",
+            "fileVersion": "9.0.1726.26501"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "ReceiptOCR.API/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "Microsoft.Win32.SystemEvents/9.0.17": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-jVoJLPC3NEmXe0vAhmyvaHpa025q5yBFJ5muwgVFGueAFKYNmjVQRv/cr+FjwOQgC7xzakE8bvAQ/JqYkJhOxg==",
+      "path": "microsoft.win32.systemevents/9.0.17",
+      "hashPath": "microsoft.win32.systemevents.9.0.17.nupkg.sha512"
+    },
+    "System.Drawing.Common/9.0.17": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-cphaI7VxsMb/RSXoAbi4jXMU9v58EVZUSRVQf4UFI36YxZ6X0598/glQBik/Y4/mdBxvURFLZWbdyTUXOdF86Q==",
+      "path": "system.drawing.common/9.0.17",
+      "hashPath": "system.drawing.common.9.0.17.nupkg.sha512"
+    }
+  }
+}

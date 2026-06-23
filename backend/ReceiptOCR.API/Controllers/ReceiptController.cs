@@ -18,6 +18,7 @@ namespace ReceiptOCR.API.Controllers;
 public class ReceiptController : ControllerBase
 {
     private readonly ImagePreprocessingService _preprocessingService;
+    private readonly GeminiService _geminiService;
     private readonly ILogger<ReceiptController> _logger;
 
     // Desteklenen dosya formatları
@@ -28,9 +29,11 @@ public class ReceiptController : ControllerBase
 
     public ReceiptController(
         ImagePreprocessingService preprocessingService,
+        GeminiService geminiService,
         ILogger<ReceiptController> logger)
     {
         _preprocessingService = preprocessingService;
+        _geminiService = geminiService;
         _logger = logger;
     }
 
@@ -123,14 +126,40 @@ public class ReceiptController : ControllerBase
     // =========================================================================
 
     /// <summary>
-    /// [GEMİNİ API EKİBİ] Görüntüyü Gemini'ye gönderip fiş verilerini parse eder.
-    /// TODO: Gemini API ekibi tarafından implement edilecek.
+    /// Görseli Gemini'ye gönderip fiş verilerini parse eder.
+    /// Görüntü direkt base64 veya dosya olarak gönderilebilir.
     /// </summary>
     [HttpPost("scan")]
-    public IActionResult Scan()
+    public async Task<IActionResult> Scan(IFormFile file)
     {
-        return StatusCode(501, ApiResponse<object>.Fail(
-            "Bu endpoint henüz implement edilmedi. Gemini API ekibi tarafından geliştirilecek."));
+        _logger.LogInformation("[API] Scan isteği alındı. Dosya: {FileName}", file?.FileName);
+
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail("Dosya yüklenmedi."));
+
+        if (!AllowedContentTypes.Contains(file.ContentType))
+            return BadRequest(ApiResponse<object>.Fail("Desteklenmeyen format."));
+
+        try
+        {
+            using var ms = new MemoryStream();
+            await file.CopyToAsync(ms);
+            var imageBytes = ms.ToArray();
+
+            var result = await _geminiService.ScanReceiptAsync(imageBytes);
+
+            if (result == null)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Gemini API'den sonuç alınamadı."));
+            }
+
+            return Ok(ApiResponse<ExtractedReceiptData>.Ok(result, "Fiş başarıyla okundu."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Scan hatası.");
+            return StatusCode(500, ApiResponse<object>.Fail($"OCR Hatası: {ex.Message}"));
+        }
     }
 
     /// <summary>

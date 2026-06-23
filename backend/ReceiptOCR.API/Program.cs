@@ -37,6 +37,9 @@ try
 
     // Görüntü ön işleme servisi (Bizim sorumluluk alanımız)
     builder.Services.AddSingleton<ImagePreprocessingService>();
+    
+    // Gemini API servisi
+    builder.Services.AddHttpClient<GeminiService>();
 
     // CORS: Angular dev server (http://localhost:4200) erişimi için
     builder.Services.AddCors(options =>
