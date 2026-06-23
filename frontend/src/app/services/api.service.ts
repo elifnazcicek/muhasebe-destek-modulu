@@ -38,11 +38,15 @@ export class ApiService {
     return this.http.put<any>(`${this.baseUrl}/receipt/${id}`, receipt);
   }
 
-  // ==========================================
-  // AUTH ENDPOINTS (Kullanıcı Girişi)
-  // ==========================================
+  // ==========================================================
+  // AUTH ENDPOINTS (Kullanıcı Girişi ve Kayıt)
+  // ==========================================================
   login(credentials: any): Observable<any> {
     return this.http.post<any>(`${this.baseUrl}/auth/login`, credentials);
+  }
+
+  register(credentials: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/auth/register`, credentials);
   }
 
   // ==========================================

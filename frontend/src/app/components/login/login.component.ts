@@ -2,12 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-
-interface UserProfile {
-  username: string;
-  email?: string;
-  password?: string;
-}
+import { ApiService } from '../../services/api.service';
 
 @Component({
   selector: 'app-login',
@@ -28,22 +23,13 @@ export class LoginComponent implements OnInit {
   successMessage = '';
   loading = false;
 
-  constructor(private router: Router) {
-    // If already logged in, redirect straight to dashboard
+  constructor(private router: Router, private apiService: ApiService) {
     if (localStorage.getItem('isLoggedIn') === 'true') {
       this.router.navigate(['/dashboard']);
     }
   }
 
   ngOnInit(): void {
-    // Initialize default users in localStorage if empty
-    let users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.length === 0) {
-      users.push({ username: 'admin', password: '123' });
-      localStorage.setItem('users', JSON.stringify(users));
-    }
-
-    // Check if "Remember Me" credentials exist
     const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
     if (savedRememberMe) {
       this.rememberMe = true;
@@ -62,7 +48,6 @@ export class LoginComponent implements OnInit {
     if (this.mode === 'register') {
       this.username = '';
     } else {
-      // Restore remembered credentials if switching back to login
       const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
       if (savedRememberMe) {
         this.rememberMe = true;
@@ -89,35 +74,32 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    setTimeout(() => {
-      const users: UserProfile[] = JSON.parse(localStorage.getItem('users') || '[]');
-      const matchedUser = users.find(
-        (u) => u.username.toLowerCase() === this.username.toLowerCase() && u.password === this.password
-      );
+    this.apiService.login({ username: this.username, password: this.password }).subscribe({
+      next: (res) => {
+        if (res.success) {
+          localStorage.setItem('isLoggedIn', 'true');
+          localStorage.setItem('username', res.username);
+          localStorage.setItem('token', res.token);
 
-      if (matchedUser) {
-        // Save login state
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('username', matchedUser.username);
+          if (this.rememberMe) {
+            localStorage.setItem('rememberMe', 'true');
+            localStorage.setItem('rememberedUsername', this.username);
+            localStorage.setItem('rememberedPassword', this.password);
+          } else {
+            localStorage.removeItem('rememberMe');
+            localStorage.removeItem('rememberedUsername');
+            localStorage.removeItem('rememberedPassword');
+          }
 
-        // Save or clear Remember Me credentials
-        if (this.rememberMe) {
-          localStorage.setItem('rememberMe', 'true');
-          localStorage.setItem('rememberedUsername', this.username);
-          localStorage.setItem('rememberedPassword', this.password);
-        } else {
-          localStorage.removeItem('rememberMe');
-          localStorage.removeItem('rememberedUsername');
-          localStorage.removeItem('rememberedPassword');
+          this.loading = false;
+          this.router.navigate(['/dashboard']);
         }
-
+      },
+      error: (err) => {
         this.loading = false;
-        this.router.navigate(['/dashboard']);
-      } else {
-        this.loading = false;
-        this.errorMessage = 'Hatalı kullanıcı adı veya şifre.';
+        this.errorMessage = err.error?.error || 'Hatalı kullanıcı adı veya şifre.';
       }
-    }, 800);
+    });
   }
 
   private handleRegister(): void {
@@ -139,36 +121,24 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    setTimeout(() => {
-      let users: UserProfile[] = JSON.parse(localStorage.getItem('users') || '[]');
-      const usernameExists = users.some(
-        (u) => u.username.toLowerCase() === this.username.toLowerCase()
-      );
-
-      if (usernameExists) {
+    this.apiService.register({ username: this.username, password: this.password }).subscribe({
+      next: (res) => {
         this.loading = false;
-        this.errorMessage = 'Bu kullanıcı adı zaten alınmış.';
-        return;
+        if (res.success) {
+          this.successMessage = 'Profil başarıyla oluşturuldu! Giriş ekranına yönlendiriliyorsunuz...';
+          setTimeout(() => {
+            const tempUsername = this.username;
+            const tempPassword = this.password;
+            this.toggleMode();
+            this.username = tempUsername;
+            this.password = tempPassword;
+          }, 2000);
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMessage = err.error?.error || 'Kayıt olurken bir hata oluştu.';
       }
-
-      // Add new profile
-      users.push({
-        username: this.username,
-        password: this.password
-      });
-      localStorage.setItem('users', JSON.stringify(users));
-
-      this.loading = false;
-      this.successMessage = 'Profil başarıyla oluşturuldu! Giriş ekranına yönlendiriliyorsunuz...';
-
-      setTimeout(() => {
-        const tempUsername = this.username;
-        const tempPassword = this.password;
-        this.toggleMode();
-        // Auto-populate for convenience after registration
-        this.username = tempUsername;
-        this.password = tempPassword;
-      }, 2000);
-    }, 800);
+    });
   }
 }

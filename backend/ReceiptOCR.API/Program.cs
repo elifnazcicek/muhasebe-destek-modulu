@@ -6,6 +6,7 @@ using Serilog;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using Microsoft.EntityFrameworkCore;
 
 // =============================================================================
 // Serilog Yapılandırması (Bootstrap Logger)
@@ -34,6 +35,11 @@ try
     // =============================================================================
     // Servis Kayıtları (Dependency Injection)
     // =============================================================================
+
+    // Entity Framework Core (SQL Server)
+    var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    builder.Services.AddDbContext<ReceiptOCR.API.Data.ReceiptDbContext>(options =>
+        options.UseSqlServer(connectionString));
 
     // Görüntü ön işleme servisi (Bizim sorumluluk alanımız)
     builder.Services.AddSingleton<ImagePreprocessingService>();

@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("ReceiptOCR.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+044c386ef513e03d9ee15874455f7c201c187cec")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1a753c6f1594ebbd99531828806cf2c2fbc4f870")]
 [assembly: System.Reflection.AssemblyProductAttribute("ReceiptOCR.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("ReceiptOCR.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
