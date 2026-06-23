@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.RateLimiting;
 using ReceiptOCR.API.Middleware;
 using ReceiptOCR.API.Services;
 using Serilog;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
 
 // =============================================================================
 // Serilog Yapılandırması (Bootstrap Logger)
@@ -48,6 +51,36 @@ try
 
     // Controller desteği
     builder.Services.AddControllers();
+
+    // =========================================================================
+    // JWT Kimlik Doğrulama (Authentication) Yapılandırması
+    // =========================================================================
+    var jwtKey = builder.Configuration["Jwt:Key"] ?? "super_secret_key_for_receipt_ocr_app_1234567890123456";
+    var key = Encoding.ASCII.GetBytes(jwtKey);
+
+    builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false; // Geliştirme ortamı için false
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ReceiptOCR",
+            ValidateAudience = true,
+            ValidAudience = builder.Configuration["Jwt:Audience"] ?? "ReceiptOCR",
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    });
+
+    builder.Services.AddAuthorization();
 
     // =========================================================================
     // Rate Limiting Yapılandırması
@@ -109,6 +142,11 @@ try
     app.UseSerilogRequestLogging();
 
     app.UseCors();
+    
+    // 4. JWT Yetkilendirme Middleware'leri
+    app.UseAuthentication();
+    app.UseAuthorization();
+
     app.MapControllers();
 
     // Sağlık kontrolü endpoint'i
