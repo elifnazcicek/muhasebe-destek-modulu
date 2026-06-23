@@ -1,0 +1,215 @@
+<div class="workspace-main-grid">
+
+  <!-- ================= SOL KOLON: GÖRÜNTÜ ALMA / KAMERA / DOSYA ================= -->
+  <section class="panel-section camera-section">
+    <div class="panel-header-tabs" *ngIf="!showPreview">
+      <button class="tab-btn" [class.active]="leftTab === 'camera'" (click)="setLeftTab('camera')">
+        📷 Kamera
+      </button>
+      <button class="tab-btn" [class.active]="leftTab === 'upload'" (click)="setLeftTab('upload')">
+        📁 Dosyadan Yükle
+      </button>
+    </div>
+    
+    <div class="panel-header" *ngIf="showPreview">
+      <h2>🧾 Taranan Fiş Görseli</h2>
+    </div>
+
+    <div class="panel-content">
+      <div class="view-container" *ngIf="!showPreview">
+        
+        <div class="camera-wrapper" *ngIf="leftTab === 'camera'">
+          <div class="video-placeholder">
+            <span class="live-tag">CANLI</span>
+            <div class="aim-guide"></div>
+            <img src="https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500&auto=format&fit=crop" alt="Live stream" class="live-stream-img" />
+          </div>
+          <button class="btn btn-primary btn-block" (click)="captureImage()" style="margin-top: 15px;">
+            📸 Fişi Yakala ve Tara
+          </button>
+        </div>
+
+        <div class="upload-area" *ngIf="leftTab === 'upload'" (click)="fileInput.click()">
+          <span class="upload-icon">☁️</span>
+          <h3>Görsel Sürükleyin veya Seçin</h3>
+          <p>Desteklenen formatlar: PNG, JPG, JPEG</p>
+          <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;">Dosya Seç</button>
+          <input #fileInput type="file" (change)="onFileSelected($event)" accept="image/*" style="display: none;" />
+        </div>
+      </div>
+
+      <div class="view-container" *ngIf="showPreview">
+        <div class="preview-wrapper">
+          <img *ngIf="previewUrl" [src]="previewUrl" alt="Okunan Fiş Görseli" class="captured-image">
+        </div>
+        
+
+
+        <button class="btn btn-secondary btn-block" (click)="resetInput()" style="margin-top: 15px;">
+          🔄 Yeni Görsel Aktar
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= ORTA KOLON: DÜZENLENEBİLİR EXCEL FORM ================= -->
+  <section class="panel-section form-section">
+    <div class="panel-header">
+      <h2>📝 Elde Edilen Çıktılar</h2>
+      <span class="status-badge" [class.active]="items.length > 0">
+        {{ items.length > 0 ? 'OCR Çözümlendi' : 'Girdi Bekleniyor' }}
+      </span>
+    </div>
+    
+    <div class="panel-content">
+      <div *ngIf="statusMessage" class="process-alert" [ngClass]="statusType">
+        <div class="spinner spinner-sm" *ngIf="statusType === 'info'"></div>
+        <span>{{ statusMessage }}</span>
+      </div>
+
+      <div class="edit-mode-indicator" *ngIf="receiptId !== null">
+        <div class="edit-info">
+          <span>✏️ Kayıt Güncelleniyor (ID: <strong>#{{ receiptId }}</strong>)</span>
+        </div>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEdit()">İptal</button>
+      </div>
+
+      <form (submit)="saveReceipt(); $event.preventDefault();" id="receipt-form">
+        <div class="form-group">
+          <label for="merchant_name">Mağaza Adı</label>
+          <div class="input-with-icon">
+            <span class="field-icon">🏢</span>
+            <input type="text" id="merchant_name" [(ngModel)]="merchantName" name="merchantName" required placeholder="Otomatik okunacaktır veya manuel girin">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="receipt_date">Fiş Tarihi</label>
+            <div class="input-with-icon">
+              <span class="field-icon">📅</span>
+              <input type="date" id="receipt_date" [(ngModel)]="receiptDate" name="receiptDate" required>
+            </div>
+          </div>
+          <div class="form-group">
+            <label for="tax_amount">Toplam KDV (TL)</label>
+            <div class="input-with-icon">
+              <span class="field-icon">٪</span>
+              <input type="number" id="tax_amount" [(ngModel)]="taxAmount" name="taxAmount" step="0.01" required placeholder="0.00">
+            </div>
+          </div>
+        </div>
+
+        <div class="items-container">
+          <div class="items-header">
+            <h3>Satır Kalemleri (Ürünler)</h3>
+            <button type="button" class="btn btn-sm btn-secondary" (click)="addItem()">
+              ➕ Ekle
+            </button>
+          </div>
+          
+          <div class="table-wrapper">
+            <table id="items-table">
+              <thead>
+                <tr>
+                  <th>Ürün Adı</th>
+                  <th width="70">Adet</th>
+                  <th width="90">B. Fiyat</th>
+                  <th width="75">KDV %</th>
+                  <th width="90">Toplam</th>
+                  <th width="40"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of items; let i = index">
+                  <td>
+                    <input type="text" [(ngModel)]="item.itemName" name="name_{{i}}" class="table-input" required />
+                  </td>
+                  <td>
+                    <input type="number" [(ngModel)]="item.quantity" name="qty_{{i}}" (ngModelChange)="onItemChange(item)" class="table-input text-center" min="0.01" step="any" required />
+                  </td>
+                  <td>
+                    <input type="number" [(ngModel)]="item.unitPrice" name="price_{{i}}" (ngModelChange)="onItemChange(item)" class="table-input text-right" min="0" step="any" required />
+                  </td>
+                  <td>
+                    <select [(ngModel)]="item.taxRate" name="tax_{{i}}" (ngModelChange)="calculateTotals()" class="table-select">
+                      <option [ngValue]="1">1</option>
+                      <option [ngValue]="10">10</option>
+                      <option [ngValue]="20">20</option>
+                    </select>
+                  </td>
+                  <td class="total-cell text-right">
+                    {{ item.totalPrice | number:'1.2-2' }}
+                  </td>
+                  <td style="text-align: center;">
+                    <button type="button" class="row-delete-btn" (click)="removeItem(i)">&times;</button>
+                  </td>
+                </tr>
+                <tr *ngIf="items.length === 0">
+                  <td colspan="6" class="empty-rows-msg">
+                    Ürün kalemi bulunmuyor. Ekle butonunu kullanın.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="form-group total-group">
+          <label for="total_amount">Toplam Tutar (KDV Dahil)</label>
+          <div class="input-with-icon total-input">
+            <span class="currency-label">₺</span>
+            <input type="number" id="total_amount" [(ngModel)]="totalAmount" name="totalAmount" step="0.01" required placeholder="0.00">
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-accent btn-block" [disabled]="!merchantName || items.length === 0">
+          💾 {{ receiptId ? 'Veritabanındaki Kaydı Güncelle' : 'Veritabanına Kalıcı Kaydet' }}
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= SAĞ KOLON: VERİ ARŞİVİ ================= -->
+  <section class="panel-section list-section">
+    <div class="panel-header">
+      <h2>📁 Veri Arşivi</h2>
+      <button class="btn btn-circle" (click)="fetchReceiptsList()" title="Yenile" style="margin-left: auto;">
+        🔄
+      </button>
+    </div>
+
+    <div class="panel-content">
+      <div class="view-container">
+        <!-- Search bar -->
+        <div class="archive-search">
+          <input type="text" [(ngModel)]="searchQuery" (input)="filterReceipts()" placeholder="Ara (Mağaza veya Tarih)..." class="search-input" />
+        </div>
+
+        <div class="history-list">
+          <div *ngIf="loadingArchive" class="archive-loading">
+            <div class="spinner spinner-sm"></div>
+            <span>Arşiv yükleniyor...</span>
+          </div>
+
+          <div *ngIf="!loadingArchive && filteredReceipts.length === 0" class="empty-state">
+            <p>Kayıtlı fatura bulunamadı.</p>
+          </div>
+
+          <div class="archive-card" *ngFor="let r of filteredReceipts">
+            <div class="card-top">
+              <span class="card-id">#{{ r.id }}</span>
+              <span class="card-date">{{ r.receiptDate }}</span>
+            </div>
+            <div class="card-merchant">{{ r.merchantName }}</div>
+            <div class="card-bottom">
+              <div class="card-total">₺{{ r.totalAmount | number:'1.2-2' }}</div>
+              <button class="btn btn-primary btn-xs" (click)="loadReceiptForEdit(r.id)">Düzenle</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>

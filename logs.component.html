@@ -1,0 +1,73 @@
+<div class="logs-container">
+  <div class="header-section">
+    <h1>Sistem Logları & Hata Takip Merkezi</h1>
+    <p>Uygulamanın gerçekleştirdiği işlemleri canlı takip edin ve yedek dosyalarına erişin.</p>
+  </div>
+
+  <div class="logs-grid">
+    
+    <!-- LEFT PANEL: BACKUPS LIST -->
+    <div class="panel glassmorphic backups-panel">
+      <div class="panel-header">
+        <h2>Log Yedek Arşivi</h2>
+      </div>
+
+      <div class="backup-actions">
+        <button class="btn btn-secondary btn-full" (click)="showLiveLogs()" [disabled]="!selectedBackup">
+          🟢 Canlı Log İzleyiciye Dön
+        </button>
+        <button class="btn btn-primary btn-full" (click)="triggerBackup()">
+          💾 Şimdi Yedek Oluştur
+        </button>
+      </div>
+
+      <div *ngIf="statusMessage" class="backup-status">
+        {{ statusMessage }}
+      </div>
+
+      <div class="backups-list-container">
+        <h3>Önceki Yedekler (Son 20)</h3>
+        
+        <div *ngIf="loadingBackups" class="small-loading">
+          <div class="spinner spinner-sm"></div>
+          <span>Yedekler aranıyor...</span>
+        </div>
+
+        <div *ngIf="!loadingBackups && backups.length === 0" class="no-backups">
+          Henüz yedek dosya bulunmuyor.
+        </div>
+
+        <ul class="backups-list" *ngIf="!loadingBackups && backups.length > 0">
+          <li *ngFor="let backup of backups" 
+              [class.active]="selectedBackup === backup.filename"
+              (click)="viewBackup(backup.filename)">
+            <div class="backup-info">
+              <span class="backup-name">📄 {{ backup.filename }}</span>
+              <span class="backup-meta">{{ backup.lastModified }} • {{ (backup.size / 1024) | number:'1.1-1' }} KB</span>
+            </div>
+            <span class="view-indicator">→</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- RIGHT PANEL: TERMINAL LOG VIEWER -->
+    <div class="panel glassmorphic terminal-panel">
+      <div class="panel-header flex-header">
+        <div class="terminal-title">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+          <span class="title-text">
+            {{ selectedBackup ? 'Arşiv Log Dosyası: ' + selectedBackup : 'Canlı Sistem Konsolu (5sn Otomatik Güncelleme)' }}
+          </span>
+        </div>
+      </div>
+
+      <div class="terminal-body" #terminalBody>
+        <pre class="terminal-content">{{ logContent }}</pre>
+      </div>
+    </div>
+
+  </div>
+</div>
