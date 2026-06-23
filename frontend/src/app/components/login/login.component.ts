@@ -4,12 +4,6 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { ApiService } from '../../services/api.service';
 
-interface UserProfile {
-  username: string;
-  email?: string;
-  password?: string;
-}
-
 @Component({
   selector: 'app-login',
   standalone: true,
@@ -30,21 +24,12 @@ export class LoginComponent implements OnInit {
   loading = false;
 
   constructor(private router: Router, private apiService: ApiService) {
-    // If already logged in, redirect straight to dashboard
     if (localStorage.getItem('isLoggedIn') === 'true') {
       this.router.navigate(['/dashboard']);
     }
   }
 
   ngOnInit(): void {
-    // Initialize default users in localStorage if empty
-    let users = JSON.parse(localStorage.getItem('users') || '[]');
-    if (users.length === 0) {
-      users.push({ username: 'admin', password: '123' });
-      localStorage.setItem('users', JSON.stringify(users));
-    }
-
-    // Check if "Remember Me" credentials exist
     const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
     if (savedRememberMe) {
       this.rememberMe = true;
@@ -63,7 +48,6 @@ export class LoginComponent implements OnInit {
     if (this.mode === 'register') {
       this.username = '';
     } else {
-      // Restore remembered credentials if switching back to login
       const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
       if (savedRememberMe) {
         this.rememberMe = true;
@@ -93,12 +77,10 @@ export class LoginComponent implements OnInit {
     this.apiService.login({ username: this.username, password: this.password }).subscribe({
       next: (res) => {
         if (res.success) {
-          // Save login state and token
           localStorage.setItem('isLoggedIn', 'true');
           localStorage.setItem('username', res.username);
           localStorage.setItem('token', res.token);
 
-          // Save or clear Remember Me credentials
           if (this.rememberMe) {
             localStorage.setItem('rememberMe', 'true');
             localStorage.setItem('rememberedUsername', this.username);
@@ -156,7 +138,6 @@ export class LoginComponent implements OnInit {
             const tempUsername = this.username;
             const tempPassword = this.password;
             this.toggleMode();
-            // Auto-populate for convenience after registration
             this.username = tempUsername;
             this.password = tempPassword;
           }, 2000);
