@@ -13,6 +13,7 @@ import {
 } from '../../services/image-processor.service';
 import { ApiService } from '../../services/api.service';
 import { CropperComponent, CropperOutput } from '../cropper/cropper.component';
+import { firstValueFrom } from 'rxjs';
 
 /**
  * Kamera Component'i (Güncellenmiş)
@@ -352,12 +353,12 @@ export class CameraComponent implements OnInit, OnDestroy {
   private async uploadToBackend(result: ProcessingOutput): Promise<void> {
     this.addLog("Backend'e gönderiliyor...");
     try {
-      const apiResponse = await this.apiService.uploadProcessedImage(result.blob);
+      const apiResponse = await firstValueFrom(this.apiService.scanReceipt(result.blob));
       this.uploadResult.set(apiResponse);
-      if (apiResponse.success) {
-        this.addLog(`Backend kayıt başarılı: ${apiResponse.data?.processed.filename}`);
+      if (apiResponse && apiResponse.success !== false) {
+        this.addLog(`Backend işlem başarılı.`);
       } else {
-        this.addLog(`Backend hatası: ${apiResponse.error}`);
+        this.addLog(`Backend hatası: ${apiResponse?.message}`);
       }
     } catch (err: any) {
       this.addLog(`Backend bağlantı hatası: ${err.message}`);

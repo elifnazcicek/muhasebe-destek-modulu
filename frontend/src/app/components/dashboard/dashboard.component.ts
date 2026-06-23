@@ -59,33 +59,7 @@ export class DashboardComponent implements OnInit {
 
   // Mock capturing image
   captureImage(): void {
-    this.showStatus('Fotoğraf çekiliyor ve okuma başlatılıyor...', 'info');
-    
-    this.apiService.ocrParse("STARBUCKS COFFEE\nTARİH: 22.06.2026\nCAPPACCINO GRANDE 95.00\nHAVUÇLU KEK 75.00\nKDV 10\nTOPLAM 170.00").subscribe({
-      next: (res) => {
-        this.merchantName = res.merchant_name;
-        this.receiptDate = res.receipt_date;
-        this.totalAmount = res.total_amount;
-        this.taxAmount = res.tax_amount;
-        this.imagePath = "data/receipt_sample.jpg";
-        this.previewUrl = "https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500&auto=format&fit=crop";
-        
-        this.items = res.items.map((i: any) => ({
-          itemName: i.item_name,
-          quantity: i.quantity,
-          unitPrice: i.unit_price,
-          totalPrice: i.total_price,
-          taxRate: i.tax_rate
-        }));
-
-        this.showPreview = true;
-        this.showStatus('Fiş başarıyla okundu.', 'success');
-        setTimeout(() => this.clearStatus(), 2000);
-      },
-      error: (err) => {
-        this.showStatus('Kamera tarama hatası: ' + err.message, 'error');
-      }
-    });
+    this.showStatus('Kamera özelliği Dashboard üzerinden değil, Kamera sayfasından kullanılmalıdır.', 'info');
   }
 
   // File Upload OCR
