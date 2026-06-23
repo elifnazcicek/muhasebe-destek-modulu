@@ -58,6 +58,7 @@ export class LoginComponent implements OnInit {
   }
 
   onSubmit(): void {
+    alert('Butona basıldı ve yeni kodlar devrede!');
     if (this.mode === 'login') {
       this.handleLogin();
     } else {
