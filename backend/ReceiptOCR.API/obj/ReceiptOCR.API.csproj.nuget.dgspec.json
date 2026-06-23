@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\stajyer\\.gemini\\antigravity\\scratch\\receipt_ocr_system\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj": {}
+    "C:\\Projeler\\receipt_reg_auto\\receipt_reg_auto\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj": {}
   },
   "projects": {
-    "C:\\Users\\stajyer\\.gemini\\antigravity\\scratch\\receipt_ocr_system\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj": {
+    "C:\\Projeler\\receipt_reg_auto\\receipt_reg_auto\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\stajyer\\.gemini\\antigravity\\scratch\\receipt_ocr_system\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj",
+        "projectUniqueName": "C:\\Projeler\\receipt_reg_auto\\receipt_reg_auto\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj",
         "projectName": "ReceiptOCR.API",
-        "projectPath": "C:\\Users\\stajyer\\.gemini\\antigravity\\scratch\\receipt_ocr_system\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj",
+        "projectPath": "C:\\Projeler\\receipt_reg_auto\\receipt_reg_auto\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj",
         "packagesPath": "C:\\Users\\stajyer\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\stajyer\\.gemini\\antigravity\\scratch\\receipt_ocr_system\\backend\\ReceiptOCR.API\\obj\\",
+        "outputPath": "C:\\Projeler\\receipt_reg_auto\\receipt_reg_auto\\backend\\ReceiptOCR.API\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\stajyer\\AppData\\Roaming\\NuGet\\NuGet.Config"
@@ -90,7 +90,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Users\\stajyer\\dotnet\\sdk\\9.0.306/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.315/PortableRuntimeIdentifierGraph.json"
         }
       }
     }

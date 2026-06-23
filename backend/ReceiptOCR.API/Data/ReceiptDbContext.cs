@@ -10,9 +10,9 @@ namespace ReceiptOCR.API.Data
         }
 
         public DbSet<User> Users { get; set; }
-        
-        // Settings, Expenses, SystemLogs tabloları da buraya eklenebilir
-        // Şimdilik sadece Auth için Users tablosuna odaklanıyoruz.
+        public DbSet<Expense> Expenses { get; set; }
+        public DbSet<SystemLog> SystemLogs { get; set; }
+        public DbSet<Setting> Settings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -23,6 +23,24 @@ namespace ReceiptOCR.API.Data
                 entity.ToTable("Users");
                 entity.HasKey(e => e.Id);
                 entity.HasIndex(e => e.Username).IsUnique();
+            });
+
+            modelBuilder.Entity<Expense>(entity =>
+            {
+                entity.ToTable("Expenses");
+                entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<SystemLog>(entity =>
+            {
+                entity.ToTable("SystemLogs");
+                entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<Setting>(entity =>
+            {
+                entity.ToTable("Settings");
+                entity.HasKey(e => e.Key);
             });
         }
     }

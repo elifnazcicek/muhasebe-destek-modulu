@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "ndfgZ1wAJKY=",
+  "dgSpecHash": "P0N+2hm/tlU=",
   "success": true,
-  "projectFilePath": "C:\\Users\\stajyer\\.gemini\\antigravity\\scratch\\receipt_ocr_system\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj",
+  "projectFilePath": "C:\\Projeler\\receipt_reg_auto\\receipt_reg_auto\\backend\\ReceiptOCR.API\\ReceiptOCR.API.csproj",
   "expectedPackageFiles": [
     "C:\\Users\\stajyer\\.nuget\\packages\\azure.core\\1.38.0\\azure.core.1.38.0.nupkg.sha512",
     "C:\\Users\\stajyer\\.nuget\\packages\\azure.identity\\1.11.4\\azure.identity.1.11.4.nupkg.sha512",
