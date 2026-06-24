@@ -1,5 +1,7 @@
 using System.Net;
 using System.Text.Json;
+using ReceiptOCR.API.Data;
+using ReceiptOCR.API.Models;
 
 namespace ReceiptOCR.API.Middleware;
 
@@ -17,7 +19,7 @@ public class GlobalExceptionMiddleware
         _logger = logger;
     }
 
-    public async Task InvokeAsync(HttpContext context)
+    public async Task InvokeAsync(HttpContext context, ReceiptDbContext dbContext)
     {
         try
         {
@@ -27,6 +29,28 @@ public class GlobalExceptionMiddleware
         {
             // Hatayı Serilog üzerinden logla
             _logger.LogError(ex, "İşlenmeyen hata oluştu: {ErrorMessage}", ex.Message);
+
+            // Veritabanına hata logunu kaydet
+            try
+            {
+                dbContext.ChangeTracker.Clear();
+                var username = context.User?.Identity?.Name;
+                var actionType = $"{context.Request.Method} {context.Request.Path}";
+                var errorLog = new ErrorLog
+                {
+                    Timestamp = DateTime.Now,
+                    Username = username,
+                    ActionType = actionType,
+                    ErrorMessage = ex.Message,
+                    StackTrace = ex.StackTrace
+                };
+                dbContext.ErrorLogs.Add(errorLog);
+                await dbContext.SaveChangesAsync();
+            }
+            catch (Exception dbEx)
+            {
+                _logger.LogError(dbEx, "Hata veritabanına kaydedilirken hata oluştu");
+            }
 
             // İstemciye temiz JSON yanıt döndür
             await HandleExceptionAsync(context, ex);

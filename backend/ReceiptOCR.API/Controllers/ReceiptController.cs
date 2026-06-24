@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using ReceiptOCR.API.Data;
 using ReceiptOCR.API.Models;
 using ReceiptOCR.API.Services;
+using ClosedXML.Excel;
 
 namespace ReceiptOCR.API.Controllers;
 
@@ -16,6 +17,7 @@ public class ReceiptController : ControllerBase
     private readonly ImagePreprocessingService _preprocessingService;
     private readonly GeminiService _geminiService;
     private readonly ReceiptDbContext _context;
+    private readonly IExcelQueueService _excelQueueService;
     private readonly ILogger<ReceiptController> _logger;
 
     // Desteklenen dosya formatları
@@ -28,11 +30,13 @@ public class ReceiptController : ControllerBase
         ImagePreprocessingService preprocessingService,
         GeminiService geminiService,
         ReceiptDbContext context,
+        IExcelQueueService excelQueueService,
         ILogger<ReceiptController> logger)
     {
         _preprocessingService = preprocessingService;
         _geminiService = geminiService;
         _context = context;
+        _excelQueueService = excelQueueService;
         _logger = logger;
     }
 
@@ -100,6 +104,7 @@ public class ReceiptController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Preprocess hatası.");
+            await LogErrorToDbAsync("Preprocess", ex);
             return StatusCode(500, ApiResponse<object>.Fail($"Sunucu hatası: {ex.Message}"));
         }
     }
@@ -161,6 +166,7 @@ public class ReceiptController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Scan hatası.");
+            await LogErrorToDbAsync("Scan", ex);
             return StatusCode(500, ApiResponse<object>.Fail($"OCR Hatası: {ex.Message}"));
         }
     }
@@ -180,16 +186,15 @@ public class ReceiptController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail("Mağaza adı boş olamaz."));
             }
 
-            // KDV oranını ürünlerden al, yoksa varsayılan 20 yap
-            int kdvOrani = request.Items.FirstOrDefault()?.TaxRate ?? 20;
-
             var expense = new Expense
             {
                 FirmaAdi = request.MerchantName,
+                FisNo = request.FisNo,
+                VknTckn = request.VknTckn,
                 ToplamTutar = request.TotalAmount,
-                KdvOrani = kdvOrani,
+                KdvTutari = request.TaxAmount,
                 KaydedenKullanici = request.CreatedBy,
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.Now
             };
 
             // Tarih ayrıştırma
@@ -199,7 +204,7 @@ public class ReceiptController : ControllerBase
             }
             else
             {
-                expense.Tarih = DateTime.UtcNow.Date;
+                expense.Tarih = DateTime.Today;
             }
 
             // Veritabanına kaydet
@@ -216,40 +221,15 @@ public class ReceiptController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            // Excel (CSV) dosyasına ekle
-            try
-            {
-                var excelPathSetting = await _context.Settings.FirstOrDefaultAsync(s => s.Key == "ExcelPath");
-                string excelPath = excelPathSetting?.Value ?? @"C:\Muhasebe\Masraflar.xlsx";
+            // Excel (.xlsx) dosyasına yazma işlemini kuyruğa ekle
+            _excelQueueService.QueueWrite(expense, "ADD");
 
-                var directory = Path.GetDirectoryName(excelPath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                // Dosya uzantısı xlsx olarak görünse de, sistemde Excel kütüphanesi olmadığı için
-                // en güvenli yol olan CSV formatında yazıp Excel'in açmasını sağlıyoruz.
-                bool exists = System.IO.File.Exists(excelPath);
-                using (var writer = new StreamWriter(excelPath, true, System.Text.Encoding.UTF8))
-                {
-                    if (!exists)
-                    {
-                        writer.WriteLine("Tarih,Firma Adi,Fis No,Kdv Orani,Toplam Tutar,Kaydeden Kullanici");
-                    }
-                    writer.WriteLine($"{expense.Tarih:yyyy-MM-dd},{EscapeCsv(expense.FirmaAdi)},{EscapeCsv(expense.FisNo)},{expense.KdvOrani},{expense.ToplamTutar},{EscapeCsv(expense.KaydedenKullanici)}");
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogWarning(ex, "Excel dosyasına yazılırken hata oluştu, ancak veritabanı kaydı başarılı.");
-            }
-
-            return Ok(ApiResponse<object>.Ok(null, "Fiş başarıyla veritabanına ve Excel dosyasına kaydedildi."));
+            return Ok(ApiResponse<object>.Ok(null, "Fiş başarıyla veritabanına kaydedildi ve Excel yazma kuyruğuna eklendi."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Confirm hatası.");
+            await LogErrorToDbAsync("Confirm", ex, request?.CreatedBy);
             return StatusCode(500, ApiResponse<object>.Fail($"Kayıt Hatası: {ex.Message}"));
         }
     }
@@ -283,8 +263,11 @@ public class ReceiptController : ControllerBase
                 id = e.Id,
                 merchantName = e.FirmaAdi,
                 receiptDate = e.Tarih.ToString("yyyy-MM-dd"),
+                createdAt = e.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                fisNo = e.FisNo,
+                vknTckn = e.VknTckn,
                 totalAmount = e.ToplamTutar,
-                taxAmount = e.ToplamTutar * e.KdvOrani / (100 + e.KdvOrani),
+                taxAmount = e.KdvTutari,
                 imagePath = (string?)null,
                 createdBy = e.KaydedenKullanici,
                 items = new[]
@@ -295,7 +278,7 @@ public class ReceiptController : ControllerBase
                         quantity = 1,
                         unitPrice = e.ToplamTutar,
                         totalPrice = e.ToplamTutar,
-                        tax_rate = e.KdvOrani
+                        tax_rate = 20
                     }
                 }
             }).ToList();
@@ -305,6 +288,7 @@ public class ReceiptController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] History listeleme hatası.");
+            await LogErrorToDbAsync("History", ex, username);
             return StatusCode(500, ApiResponse<object>.Fail($"Geçmiş okunamadı: {ex.Message}"));
         }
     }
@@ -328,8 +312,11 @@ public class ReceiptController : ControllerBase
                 id = expense.Id,
                 merchantName = expense.FirmaAdi,
                 receiptDate = expense.Tarih.ToString("yyyy-MM-dd"),
+                createdAt = expense.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss"),
+                fisNo = expense.FisNo,
+                vknTckn = expense.VknTckn,
                 totalAmount = expense.ToplamTutar,
-                taxAmount = expense.ToplamTutar * expense.KdvOrani / (100 + expense.KdvOrani),
+                taxAmount = expense.KdvTutari,
                 imagePath = (string?)null,
                 createdBy = expense.KaydedenKullanici,
                 items = new[]
@@ -340,7 +327,7 @@ public class ReceiptController : ControllerBase
                         quantity = 1,
                         unitPrice = expense.ToplamTutar,
                         totalPrice = expense.ToplamTutar,
-                        tax_rate = expense.KdvOrani
+                        tax_rate = 20
                     }
                 }
             };
@@ -350,6 +337,7 @@ public class ReceiptController : ControllerBase
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] GetDetails hatası.");
+            await LogErrorToDbAsync($"GetDetails_{id}", ex);
             return StatusCode(500, ApiResponse<object>.Fail($"Veri okuma hatası: {ex.Message}"));
         }
     }
@@ -369,8 +357,10 @@ public class ReceiptController : ControllerBase
             }
 
             expense.FirmaAdi = request.MerchantName;
+            expense.FisNo = request.FisNo;
+            expense.VknTckn = request.VknTckn;
             expense.ToplamTutar = request.TotalAmount;
-            expense.KdvOrani = request.Items.FirstOrDefault()?.TaxRate ?? 20;
+            expense.KdvTutari = request.TaxAmount;
             expense.KaydedenKullanici = request.CreatedBy;
 
             if (DateTime.TryParse(request.ReceiptDate, out var date))
@@ -391,17 +381,21 @@ public class ReceiptController : ControllerBase
 
             await _context.SaveChangesAsync();
 
-            return Ok(ApiResponse<object>.Ok(null, "Fiş başarıyla güncellendi."));
+            // Excel (.xlsx) dosyasına güncelleme işlemini kuyruğa ekle
+            _excelQueueService.QueueWrite(expense, "UPDATE");
+
+            return Ok(ApiResponse<object>.Ok(null, "Fiş başarıyla güncellendi ve Excel yazma kuyruğuna eklendi."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Update hatası.");
+            await LogErrorToDbAsync($"Update_{id}", ex, request?.CreatedBy);
             return StatusCode(500, ApiResponse<object>.Fail($"Güncelleme Hatası: {ex.Message}"));
         }
     }
 
     /// <summary>
-    /// Excel (CSV) dosyasını indirtir.
+    /// Excel (XLSX) dosyasını indirtir.
     /// </summary>
     [HttpGet("/api/receipts/export")]
     public async Task<IActionResult> Export([FromQuery] string? username)
@@ -411,35 +405,71 @@ public class ReceiptController : ControllerBase
             var excelPathSetting = await _context.Settings.FirstOrDefaultAsync(s => s.Key == "ExcelPath");
             string excelPath = excelPathSetting?.Value ?? @"C:\Muhasebe\Masraflar.xlsx";
 
-            // Eğer dosya yoksa veritabanındakileri baştan yazalım
-            if (!System.IO.File.Exists(excelPath))
+            var directory = Path.GetDirectoryName(excelPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
             {
-                var directory = Path.GetDirectoryName(excelPath);
-                if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
-                {
-                    Directory.CreateDirectory(directory);
-                }
-
-                using var writer = new StreamWriter(excelPath, false, System.Text.Encoding.UTF8);
-                writer.WriteLine("Tarih,Firma Adi,Fis No,Kdv Orani,Toplam Tutar,Kaydeden Kullanici");
-                
-                var dbExpenses = await _context.Expenses.ToListAsync();
-                foreach (var exp in dbExpenses)
-                {
-                    writer.WriteLine($"{exp.Tarih:yyyy-MM-dd},{EscapeCsv(exp.FirmaAdi)},{EscapeCsv(exp.FisNo)},{exp.KdvOrani},{exp.ToplamTutar},{EscapeCsv(exp.KaydedenKullanici)}");
-                }
+                Directory.CreateDirectory(directory);
             }
 
+            using var workbook = new XLWorkbook();
+            var worksheet = workbook.Worksheets.Add("Masraflar");
+
+            // Başlıklar
+            worksheet.Cell(1, 1).Value = "Tarih";
+            worksheet.Cell(1, 2).Value = "Firma Adi";
+            worksheet.Cell(1, 3).Value = "Fis No";
+            worksheet.Cell(1, 4).Value = "Vkn Tckn";
+            worksheet.Cell(1, 5).Value = "Kdv Tutari";
+            worksheet.Cell(1, 6).Value = "Toplam Tutar";
+            worksheet.Cell(1, 7).Value = "Kaydeden Kullanici";
+
+            var headerRow = worksheet.Row(1);
+            headerRow.Style.Font.Bold = true;
+            headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+
+            // Filtreleme (eğer username gönderilmişse sadece onun verilerini getir)
+            List<Expense> dbExpenses;
+            if (string.IsNullOrEmpty(username))
+            {
+                dbExpenses = await _context.Expenses.OrderByDescending(e => e.Tarih).ToListAsync();
+            }
+            else
+            {
+                dbExpenses = await _context.Expenses
+                    .Where(e => e.KaydedenKullanici == username)
+                    .OrderByDescending(e => e.Tarih)
+                    .ToListAsync();
+            }
+
+            int row = 2;
+            foreach (var exp in dbExpenses)
+            {
+                worksheet.Cell(row, 1).Value = exp.Tarih.ToString("yyyy-MM-dd");
+                worksheet.Cell(row, 2).Value = exp.FirmaAdi;
+                worksheet.Cell(row, 3).Value = exp.FisNo ?? "";
+                worksheet.Cell(row, 4).Value = exp.VknTckn ?? "";
+                worksheet.Cell(row, 5).Value = exp.KdvTutari;
+                worksheet.Cell(row, 6).Value = exp.ToplamTutar;
+                worksheet.Cell(row, 7).Value = exp.KaydedenKullanici;
+
+                worksheet.Cell(row, 5).Style.NumberFormat.Format = "0.00";
+                worksheet.Cell(row, 6).Style.NumberFormat.Format = "0.00";
+                row++;
+            }
+
+            worksheet.Columns().AdjustToContents();
+            workbook.SaveAs(excelPath);
+
             var bytes = await System.IO.File.ReadAllBytesAsync(excelPath);
-            return File(bytes, "text/csv", "masraflar.csv");
+            return File(bytes, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "masraflar.xlsx");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Export hatası.");
+            await LogErrorToDbAsync("Export", ex, username);
             return StatusCode(500, "Dosya indirme hatası: " + ex.Message);
         }
     }
-
     private static string EscapeCsv(string? value)
     {
         if (string.IsNullOrEmpty(value)) return "";
@@ -449,6 +479,28 @@ public class ReceiptController : ControllerBase
         }
         return value;
     }
+
+    private async Task LogErrorToDbAsync(string actionType, Exception ex, string? username = null)
+    {
+        try
+        {
+            _context.ChangeTracker.Clear();
+            var errorLog = new ErrorLog
+            {
+                Timestamp = DateTime.Now,
+                Username = username ?? User?.Identity?.Name,
+                ActionType = actionType,
+                ErrorMessage = ex.Message,
+                StackTrace = ex.StackTrace
+            };
+            _context.ErrorLogs.Add(errorLog);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception dbEx)
+        {
+            _logger.LogError(dbEx, "Hata veritabanına kaydedilemedi.");
+        }
+    }
 }
 
 public class ConfirmRequest
@@ -456,6 +508,8 @@ public class ConfirmRequest
     public int Id { get; set; }
     public string MerchantName { get; set; } = string.Empty;
     public string ReceiptDate { get; set; } = string.Empty;
+    public string? FisNo { get; set; }
+    public string? VknTckn { get; set; }
     public decimal TotalAmount { get; set; }
     public decimal TaxAmount { get; set; }
     public string? ImagePath { get; set; }

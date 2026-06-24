@@ -45,6 +45,33 @@ END
 GO
 
 -- =======================================================
+-- TABLO 1B: ErrorLogs (Teknik Hata Logları - 30 Günlük)
+-- =======================================================
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[ErrorLogs]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[ErrorLogs] (
+        [Id]           INT IDENTITY(1,1) NOT NULL,
+        [Timestamp]    DATETIME2(7)      NOT NULL DEFAULT GETDATE(),
+        [Username]     NVARCHAR(50)      NULL,
+        [ActionType]   NVARCHAR(100)     NOT NULL, -- Fiş_Okuma, Kayıt_Onay vb.
+        [ErrorMessage] NVARCHAR(MAX)     NOT NULL,
+        [StackTrace]   NVARCHAR(MAX)     NULL,
+        
+        CONSTRAINT [PK_ErrorLogs] PRIMARY KEY CLUSTERED ([Id] ASC)
+    );
+    
+    -- Hızlı arama için indeksler
+    CREATE NONCLUSTERED INDEX [IX_ErrorLogs_Timestamp] ON [dbo].[ErrorLogs] ([Timestamp] DESC);
+    
+    PRINT 'ErrorLogs tablosu ve indeksleri oluşturuldu.';
+END
+ELSE
+BEGIN
+    PRINT 'ErrorLogs tablosu zaten mevcut.';
+END
+GO
+
+-- =======================================================
 -- TABLO 2: Expenses (Excel'e Yazılan Masraf Kayıtları)
 -- =======================================================
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[Expenses]') AND type in (N'U'))
@@ -54,7 +81,8 @@ BEGIN
         [Tarih]             DATE              NOT NULL,
         [FirmaAdi]          NVARCHAR(255)     NOT NULL,
         [FisNo]             NVARCHAR(50)      NULL,
-        [KdvOrani]          INT               NOT NULL DEFAULT 20,
+        [VknTckn]           NVARCHAR(11)      NULL,
+        [KdvTutari]         DECIMAL(10,2)     NOT NULL DEFAULT 0.00,
         [ToplamTutar]       DECIMAL(10,2)     NOT NULL,
         [KaydedenKullanici] NVARCHAR(50)      NOT NULL,
         [CreatedDate]       DATETIME2(7)      NOT NULL DEFAULT GETDATE(),
@@ -148,7 +176,8 @@ AS
 BEGIN
     SET NOCOUNT ON;
     
-    DECLARE @DeletedRows INT = 0;
+    DECLARE @DeletedSystemRows INT = 0;
+    DECLARE @DeletedErrorRows INT = 0;
     DECLARE @RetentionDays INT = 365; -- Varsayılan gün sayısı
     
     -- Ayarlar tablosundan LogRetentionDays değerini oku
@@ -160,17 +189,21 @@ BEGIN
     IF @RetentionDays IS NULL OR @RetentionDays <= 0
         SET @RetentionDays = 365;
     
-    -- Belirlenen günden eski logları sil
+    -- Belirlenen günden eski sistem loglarını sil
     DELETE FROM dbo.SystemLogs
     WHERE [Timestamp] < DATEADD(day, -@RetentionDays, GETDATE());
-    
-    SET @DeletedRows = @@ROWCOUNT;
+    SET @DeletedSystemRows = @@ROWCOUNT;
+
+    -- 30 günden eski hata loglarını sil
+    DELETE FROM dbo.ErrorLogs
+    WHERE [Timestamp] < DATEADD(day, -30, GETDATE());
+    SET @DeletedErrorRows = @@ROWCOUNT;
     
     -- Temizleme işlemini log tablosuna kaydet
     INSERT INTO dbo.SystemLogs (Username, ActionType, [Status], Details)
-    VALUES ('System_Job', 'Log_Cleanup', 'SUCCESS', CONCAT(@DeletedRows, ' adet ', @RetentionDays, ' günden eski log kaydı temizlendi.'));
+    VALUES ('System_Job', 'Log_Cleanup', 'SUCCESS', CONCAT(@DeletedSystemRows, ' adet sistem logu (Limit: ', @RetentionDays, ' gün) ve ', @DeletedErrorRows, ' adet hata logu (Limit: 30 gün) temizlendi.'));
     
-    PRINT CONCAT(@DeletedRows, ' adet eski log kaydı başarıyla silindi. (Limit: ', @RetentionDays, ' gün)');
+    PRINT CONCAT(@DeletedSystemRows, ' adet sistem logu ve ', @DeletedErrorRows, ' adet hata logu başarıyla silindi.');
 END;
 GO
 

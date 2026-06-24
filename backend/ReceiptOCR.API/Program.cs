@@ -47,6 +47,10 @@ try
     // Gemini API servisi
     builder.Services.AddHttpClient<GeminiService>();
 
+    // Excel kuyruk servisi ve arka plan işçi servisi
+    builder.Services.AddSingleton<IExcelQueueService, ExcelQueueService>();
+    builder.Services.AddHostedService<ExcelBackgroundWorker>();
+
     // CORS: Angular dev server (http://localhost:4200) erişimi için
     builder.Services.AddCors(options =>
     {
@@ -161,8 +165,8 @@ try
                 };
 
                 db.Users.AddRange(
-                    new ReceiptOCR.API.Models.User { Username = "stajyer", PasswordHash = hashPassword("123456"), FullName = "Stajyer Kullanıcı", Role = "User", IsActive = true, CreatedDate = DateTime.UtcNow },
-                    new ReceiptOCR.API.Models.User { Username = "admin", PasswordHash = hashPassword("admin123"), FullName = "Sistem Yöneticisi", Role = "Admin", IsActive = true, CreatedDate = DateTime.UtcNow }
+                    new ReceiptOCR.API.Models.User { Username = "stajyer", PasswordHash = hashPassword("123456"), FullName = "Stajyer Kullanıcı", Role = "User", IsActive = true, CreatedDate = DateTime.Now },
+                    new ReceiptOCR.API.Models.User { Username = "admin", PasswordHash = hashPassword("admin123"), FullName = "Sistem Yöneticisi", Role = "Admin", IsActive = true, CreatedDate = DateTime.Now }
                 );
                 db.SaveChanges();
                 Log.Information("Veritabanı oluşturuldu ve varsayılan kullanıcılar eklendi.");

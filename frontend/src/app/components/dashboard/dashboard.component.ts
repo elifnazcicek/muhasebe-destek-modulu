@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
@@ -30,7 +30,9 @@ export class DashboardComponent implements OnInit {
   // === MIDDLE PANEL ===
   receiptId: number | null = null;
   merchantName: string = '';
+  vknTckn: string = '';
   receiptDate: string = '';
+  fisNo: string = '';
   totalAmount: number = 0;
   taxAmount: number = 0;
   imagePath: string | null = null;
@@ -45,7 +47,7 @@ export class DashboardComponent implements OnInit {
   searchQuery: string = '';
   loadingArchive: boolean = false;
 
-  constructor(private apiService: ApiService) {}
+  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit(): void {
     this.clearForm();
@@ -71,10 +73,12 @@ export class DashboardComponent implements OnInit {
       const reader = new FileReader();
       reader.onload = (e: any) => {
         this.previewUrl = e.target.result;
+        this.cdr.detectChanges();
       };
       reader.readAsDataURL(file);
 
       this.showStatus('Dosya yükleniyor ve Gemini OCR tarafından çözümleniyor...', 'info');
+      this.cdr.detectChanges();
       
       // BİZİM GERÇEK .NET ENDPOINT'İMİZİ ÇAĞIRIR (/api/receipt/scan)
       this.apiService.scanReceipt(file).subscribe({
@@ -82,20 +86,27 @@ export class DashboardComponent implements OnInit {
           // Gemini'den dönen ExtractedReceiptData modeli
           const data = res.data; 
           this.merchantName = data.firma_adi || '';
-          this.receiptDate = data.tarih || '';
+          this.vknTckn = data.vkn_tckn || '';
+          this.receiptDate = this.formatOcrDate(data.tarih);
+          this.fisNo = data.fis_no || '';
           this.totalAmount = data.toplam_tutar || 0;
-          this.taxAmount = (data.toplam_tutar * data.kdv_orani_yuzde) / (100 + data.kdv_orani_yuzde) || 0;
+          const calculatedTax = (data.toplam_tutar * data.kdv_orani_yuzde) / (100 + data.kdv_orani_yuzde) || 0;
+          this.taxAmount = Number(calculatedTax.toFixed(2));
           this.imagePath = null; // Opsiyonel, sunucudan dönen yolu atayabiliriz
 
-          // Ürün kalemlerini desteklemediğimiz için şimdilik boş bırakıyoruz
           this.items = [];
 
           this.showPreview = true;
           this.showStatus('OCR tamamlandı!', 'success');
-          setTimeout(() => this.clearStatus(), 2500);
+          this.cdr.detectChanges();
+          setTimeout(() => {
+            this.clearStatus();
+            this.cdr.detectChanges();
+          }, 2500);
         },
         error: (err) => {
           this.showStatus('Görüntü okunamadı: ' + err.message, 'error');
+          this.cdr.detectChanges();
         }
       });
     }
@@ -145,7 +156,9 @@ export class DashboardComponent implements OnInit {
   clearForm(): void {
     this.receiptId = null;
     this.merchantName = '';
+    this.vknTckn = '';
     this.receiptDate = new Date().toISOString().substring(0, 10);
+    this.fisNo = '';
     this.totalAmount = 0;
     this.taxAmount = 0;
     this.imagePath = null;
@@ -158,26 +171,28 @@ export class DashboardComponent implements OnInit {
       this.showStatus('Lütfen Mağaza Adını girin.', 'error');
       return;
     }
-    if (this.items.length === 0) {
-      this.showStatus('Lütfen ürün kalemlerini ekleyin.', 'error');
-      return;
-    }
+
+    const taxRate = this.taxAmount > 0 && this.totalAmount > this.taxAmount 
+      ? Math.round((this.taxAmount / (this.totalAmount - this.taxAmount)) * 100) 
+      : 20;
 
     const payload = {
       id: this.receiptId || 0,
       merchantName: this.merchantName,
       receiptDate: this.receiptDate,
+      fisNo: this.fisNo,
+      vknTckn: this.vknTckn,
       totalAmount: this.totalAmount,
       taxAmount: this.taxAmount,
       imagePath: this.imagePath,
       createdBy: localStorage.getItem('username') || 'default',
-      items: this.items.map(i => ({
-        itemName: i.itemName,
-        quantity: i.quantity,
-        unitPrice: i.unitPrice,
-        totalPrice: i.totalPrice,
-        taxRate: i.taxRate
-      }))
+      items: [{
+        itemName: 'Genel Gider',
+        quantity: 1,
+        unitPrice: this.totalAmount,
+        totalPrice: this.totalAmount,
+        taxRate: taxRate
+      }]
     };
 
     this.showStatus('Kaydediliyor...', 'info');
@@ -190,13 +205,16 @@ export class DashboardComponent implements OnInit {
       next: (res) => {
         this.showStatus('İşlem tamamlandı!', 'success');
         this.fetchReceiptsList();
+        this.cdr.detectChanges();
 
         setTimeout(() => {
           this.clearForm();
+          this.cdr.detectChanges();
         }, 1200);
       },
       error: (err) => {
         this.showStatus('Kayıt başarısız oldu: ' + err.message, 'error');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -213,22 +231,32 @@ export class DashboardComponent implements OnInit {
   // === ARCHIVE METHODS ===
   fetchReceiptsList(): void {
     this.loadingArchive = true;
+    this.cdr.detectChanges();
     const currentUsername = localStorage.getItem('username') || '';
     this.apiService.getReceipts(currentUsername).subscribe({
       next: (data) => {
         this.receiptsList = data;
         this.filterReceipts();
         this.loadingArchive = false;
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.loadingArchive = false;
+        this.cdr.detectChanges();
       }
     });
   }
 
   filterReceipts(): void {
     if (!this.searchQuery.trim()) {
-      this.filteredReceipts = this.receiptsList;
+      const oneWeekAgo = new Date();
+      oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+      
+      this.filteredReceipts = this.receiptsList.filter(r => {
+        if (!r.createdAt) return false;
+        const createdDate = new Date(r.createdAt.replace(' ', 'T'));
+        return createdDate >= oneWeekAgo;
+      });
       return;
     }
     const q = this.searchQuery.toLowerCase();
@@ -241,22 +269,19 @@ export class DashboardComponent implements OnInit {
 
   loadReceiptForEdit(id: number): void {
     this.showStatus('Fatura bilgileri forma yükleniyor...', 'info');
+    this.cdr.detectChanges();
     this.apiService.getReceiptDetails(id).subscribe({
       next: (data) => {
         this.receiptId = data.id;
         this.merchantName = data.merchantName;
+        this.vknTckn = data.vknTckn || '';
         this.receiptDate = data.receiptDate;
+        this.fisNo = data.fisNo || '';
         this.totalAmount = data.totalAmount;
         this.taxAmount = data.taxAmount;
         this.imagePath = data.imagePath;
 
-        this.items = data.items.map((i: any) => ({
-          itemName: i.itemName,
-          quantity: i.quantity,
-          unitPrice: i.unitPrice,
-          totalPrice: i.totalPrice,
-          taxRate: i.tax_rate
-        }));
+        this.items = [];
 
         if (data.imagePath) {
           this.previewUrl = `http://localhost:5000/${data.imagePath}`;
@@ -267,10 +292,15 @@ export class DashboardComponent implements OnInit {
         }
         
         this.showStatus('Fatura düzenleme moduna alındı.', 'success');
-        setTimeout(() => this.clearStatus(), 1500);
+        this.cdr.detectChanges();
+        setTimeout(() => {
+          this.clearStatus();
+          this.cdr.detectChanges();
+        }, 1500);
       },
       error: (err) => {
         this.showStatus('Veri okuma hatası: ' + err.message, 'error');
+        this.cdr.detectChanges();
       }
     });
   }
@@ -283,5 +313,49 @@ export class DashboardComponent implements OnInit {
   clearStatus(): void {
     this.statusMessage = '';
     this.statusType = null;
+  }
+
+  private formatOcrDate(dateStr: string): string {
+    if (!dateStr) return new Date().toISOString().substring(0, 10);
+    
+    dateStr = dateStr.trim();
+    
+    // YYYY-MM-DD kontrolü
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+
+    // GG.AA.YYYY veya GG/AA/YYYY veya GG-AA-YYYY parçalama
+    const parts = dateStr.split(/[./-]/);
+    if (parts.length === 3) {
+      let day = parts[0].trim();
+      let month = parts[1].trim();
+      let year = parts[2].trim();
+
+      // Eğer yıl 2 haneli geldiyse (örn: 26 -> 2026)
+      if (year.length === 2) {
+        year = '20' + year;
+      }
+
+      // Eğer ilk kısım yıl ise (YYYY.AA.GG)
+      if (day.length === 4) {
+        year = parts[0].trim();
+        month = parts[1].trim();
+        day = parts[2].trim();
+      }
+
+      // Hane tamamlama (örn: 5 -> 05)
+      if (day.length === 1) day = '0' + day;
+      if (month.length === 1) month = '0' + month;
+
+      const formatted = `${year}-${month}-${day}`;
+      // Geçerli bir tarih mi kontrol et
+      if (!isNaN(Date.parse(formatted))) {
+        return formatted;
+      }
+    }
+
+    // Parse edilemezse bugünün tarihini yyyy-MM-dd formatında dön
+    return new Date().toISOString().substring(0, 10);
   }
 }

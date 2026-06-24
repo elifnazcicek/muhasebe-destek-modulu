@@ -7,6 +7,9 @@ namespace ReceiptOCR.API.Models
         [JsonPropertyName("firma_adi")]
         public string FirmaAdi { get; set; } = string.Empty;
 
+        [JsonPropertyName("vkn_tckn")]
+        public string VknTckn { get; set; } = string.Empty;
+
         [JsonPropertyName("tarih")]
         public string Tarih { get; set; } = string.Empty;
 

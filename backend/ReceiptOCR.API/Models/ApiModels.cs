@@ -81,7 +81,7 @@ public class ReceiptData
     public List<VatDetail> VatDetails { get; set; } = new();
 
     // Meta bilgiler
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = DateTime.Now;
     public string? OriginalImagePath { get; set; }
     public string? ProcessedImagePath { get; set; }
 }

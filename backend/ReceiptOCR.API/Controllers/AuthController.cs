@@ -36,10 +36,30 @@ namespace ReceiptOCR.API.Controllers
 
             if (user == null || !user.IsActive)
             {
+                // Başarısız giriş denemesini logla
+                _context.SystemLogs.Add(new SystemLog
+                {
+                    Username = request.Username,
+                    ActionType = "LOGIN",
+                    Status = "FAILED",
+                    Details = "Başarısız giriş denemesi: Geçersiz kullanıcı adı veya şifre."
+                });
+                await _context.SaveChangesAsync();
+
                 return Unauthorized(new AuthResponse { Success = false, Error = "Geçersiz kullanıcı adı veya şifre" });
             }
 
             var token = GenerateJwtToken(user);
+
+            // Başarılı girişi logla
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Username = user.Username,
+                ActionType = "LOGIN",
+                Status = "SUCCESS",
+                Details = "Kullanıcı başarıyla giriş yaptı."
+            });
+            await _context.SaveChangesAsync();
 
             return Ok(new AuthResponse
             {
@@ -65,10 +85,20 @@ namespace ReceiptOCR.API.Controllers
                 FullName = request.Username, // Varsayılan olarak username atanıyor
                 Role = "User",
                 IsActive = true,
-                CreatedDate = DateTime.UtcNow
+                CreatedDate = DateTime.Now
             };
 
             _context.Users.Add(user);
+
+            // Başarılı kayıt işlemini logla
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Username = user.Username,
+                ActionType = "REGISTER",
+                Status = "SUCCESS",
+                Details = "Yeni kullanıcı hesabı oluşturuldu."
+            });
+
             await _context.SaveChangesAsync();
 
             return Ok(new AuthResponse
@@ -77,6 +107,23 @@ namespace ReceiptOCR.API.Controllers
                 Username = user.Username,
                 Token = GenerateJwtToken(user)
             });
+        }
+
+        [HttpPost("logout")]
+        public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+        {
+            if (!string.IsNullOrWhiteSpace(request.Username))
+            {
+                _context.SystemLogs.Add(new SystemLog
+                {
+                    Username = request.Username,
+                    ActionType = "LOGOUT",
+                    Status = "SUCCESS",
+                    Details = "Kullanıcı sistemden çıkış yaptı."
+                });
+                await _context.SaveChangesAsync();
+            }
+            return Ok(new { success = true });
         }
 
         private string HashPassword(string password)
@@ -119,5 +166,10 @@ namespace ReceiptOCR.API.Controllers
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+    }
+
+    public class LogoutRequest
+    {
+        public string Username { get; set; } = string.Empty;
     }
 }

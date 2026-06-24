@@ -34,14 +34,16 @@ namespace ReceiptOCR.API.Services
 
             var systemPrompt = @"Sen profesyonel bir muhasebe veri giriş asistanısın. Görevin, sana gönderilen fiş veya fatura görsellerini analiz etmek ve bilgileri sadece belirtilen JSON formatında dönmektir. JSON dışında hiçbir açıklama veya markdown işareti yazma.
 Bu fiş görselini analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uyarak çıkar:
-1. firma_adi: Fişi düzenleyen şirketin adı.
-2. tarih: GG.AA.YYYY formatında tarih.
-3. fis_no: Fiş veya fatura numarası.
-4. kdv_orani_yuzde: Fişte uygulanan en yüksek KDV oranı (Sadece sayı, örn: 20).
-5. toplam_tutar: Fişin en altındaki genel toplam tutar (Sadece sayı, örn: 150.50).
+1. firma_adi: Fişi veya faturayı düzenleyen işletmenin adı. ÖNEMLİ: İşletme adını sadece A.Ş., Anonim Şirketi, Ltd. Şti., Limited Şirketi, Şti gibi şirket türünü belirten ibareye kadar temiz şekilde al. Sonrasındaki adres, şube, telefon veya vergi dairesi gibi ekleri dahil etme. (Örn: 'MİGROS TİCARET A.Ş. ANKARA ŞUBESİ' yerine 'MİGROS TİCARET A.Ş.').
+2. vkn_tckn: Fişi/faturayı düzenleyen firmanın 10 haneli Vergi Kimlik Numarası (VKN) veya 11 haneli T.C. Kimlik Numarası (TCKN). Bulamazsan boş bırak.
+3. tarih: GG.AA.YYYY formatında tarih.
+4. fis_no: Fiş veya fatura numarası. (Fis No veya Fatura No ibaresinin yanındaki numara).
+5. kdv_orani_yuzde: Fişte uygulanan en yüksek KDV oranı (Sadece sayı, örn: 20).
+6. toplam_tutar: Fişin en altındaki genel toplam tutar (Sadece sayı, örn: 150.50).
 JSON Şeması:
 {
-""firma_adi"": ""Firma Adı"",
+""firma_adi"": ""Temiz Firma Adı"",
+""vkn_tckn"": ""1234567890"",
 ""tarih"": ""GG.AA.YYYY"",
 ""fis_no"": ""Fiş No"",
 ""kdv_orani_yuzde"": 20,

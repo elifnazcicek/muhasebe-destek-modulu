@@ -12,6 +12,7 @@ namespace ReceiptOCR.API.Data
         public DbSet<User> Users { get; set; }
         public DbSet<Expense> Expenses { get; set; }
         public DbSet<SystemLog> SystemLogs { get; set; }
+        public DbSet<ErrorLog> ErrorLogs { get; set; }
         public DbSet<Setting> Settings { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -34,6 +35,12 @@ namespace ReceiptOCR.API.Data
             modelBuilder.Entity<SystemLog>(entity =>
             {
                 entity.ToTable("SystemLogs");
+                entity.HasKey(e => e.Id);
+            });
+
+            modelBuilder.Entity<ErrorLog>(entity =>
+            {
+                entity.ToTable("ErrorLogs");
                 entity.HasKey(e => e.Id);
             });
 

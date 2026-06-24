@@ -51,6 +51,19 @@ namespace ReceiptOCR.API.Controllers
             }
             catch (System.Exception ex)
             {
+                try
+                {
+                    _context.ErrorLogs.Add(new ErrorLog
+                    {
+                        Timestamp = DateTime.Now,
+                        Username = User?.Identity?.Name,
+                        ActionType = "GetSettings",
+                        ErrorMessage = ex.Message,
+                        StackTrace = ex.StackTrace
+                    });
+                    await _context.SaveChangesAsync();
+                }
+                catch {}
                 return StatusCode(500, new { success = false, message = "Ayarlar veritabanından okunurken hata oluştu: " + ex.Message });
             }
         }
@@ -82,6 +95,19 @@ namespace ReceiptOCR.API.Controllers
             }
             catch (System.Exception ex)
             {
+                try
+                {
+                    _context.ErrorLogs.Add(new ErrorLog
+                    {
+                        Timestamp = DateTime.Now,
+                        Username = User?.Identity?.Name,
+                        ActionType = "UpdateSettings",
+                        ErrorMessage = ex.Message,
+                        StackTrace = ex.StackTrace
+                    });
+                    await _context.SaveChangesAsync();
+                }
+                catch {}
                 return StatusCode(500, new { success = false, message = "Ayarlar kaydedilirken hata oluştu: " + ex.Message });
             }
         }

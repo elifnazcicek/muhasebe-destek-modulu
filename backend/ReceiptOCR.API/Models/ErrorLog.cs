@@ -2,13 +2,13 @@ using System;
 
 namespace ReceiptOCR.API.Models
 {
-    public class SystemLog
+    public class ErrorLog
     {
         public int Id { get; set; }
         public DateTime Timestamp { get; set; } = DateTime.Now;
-        public string Username { get; set; } = string.Empty;
+        public string? Username { get; set; }
         public string ActionType { get; set; } = string.Empty;
-        public string Status { get; set; } = string.Empty;
-        public string? Details { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
+        public string? StackTrace { get; set; }
     }
 }
