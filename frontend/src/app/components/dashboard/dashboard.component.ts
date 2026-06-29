@@ -494,8 +494,8 @@ export class DashboardComponent implements OnInit {
         this.pdfCurrentPage++;
         this.renderPdfPage();
       } else {
-        // Tüm sayfalar bittiğinde her şeyi sıfırlayalım
-        this.resetInput();
+        // Tüm sayfalar bittiğinde PDF'i kapatmıyoruz, sadece kullanıcıya bildiriyoruz
+        this.showStatus('Tüm PDF sayfaları başarıyla kaydedildi!', 'success');
       }
       this.cdr.detectChanges();
     } else {
