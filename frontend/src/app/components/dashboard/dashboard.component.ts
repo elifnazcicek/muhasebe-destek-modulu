@@ -10,6 +10,7 @@ interface ReceiptItem {
   unitPrice: number;
   totalPrice: number;
   taxRate: number;
+  kdvTutari?: number;
 }
 
 @Component({
@@ -178,13 +179,18 @@ export class DashboardComponent implements OnInit {
           const ocrTotal = data.toplam_tutar || 0;
 
           if (data.kdv_detaylari && data.kdv_detaylari.length > 0) {
-            this.items = data.kdv_detaylari.map((detail: any) => ({
-              itemName: 'KDV Satırı',
-              quantity: 1,
-              unitPrice: detail.matrah || 0,
-              totalPrice: detail.toplam_tutar || 0,
-              taxRate: detail.kdv_orani || 20
-            }));
+            this.items = data.kdv_detaylari.map((detail: any) => {
+              const u = detail.matrah || 0;
+              const t = detail.toplam_tutar || 0;
+              return {
+                itemName: 'KDV Satırı',
+                quantity: 1,
+                unitPrice: u,
+                totalPrice: t,
+                taxRate: detail.kdv_orani || 20,
+                kdvTutari: Number((t - u).toFixed(2))
+              };
+            });
           } else {
             const ocrTaxRate = data.kdv_orani_yuzde || 20;
             const ocrMatrah = Number((ocrTotal / (1 + ocrTaxRate / 100)).toFixed(2));
@@ -193,7 +199,8 @@ export class DashboardComponent implements OnInit {
               quantity: 1,
               unitPrice: ocrMatrah,
               totalPrice: ocrTotal,
-              taxRate: ocrTaxRate
+              taxRate: ocrTaxRate,
+              kdvTutari: Number((ocrTotal - ocrMatrah).toFixed(2))
             }];
           }
 
@@ -416,7 +423,8 @@ export class DashboardComponent implements OnInit {
       quantity: 1,
       unitPrice: 0,
       totalPrice: 0,
-      taxRate: 20
+      taxRate: 20,
+      kdvTutari: 0
     });
     this.calculateTotals();
   }
@@ -426,12 +434,16 @@ export class DashboardComponent implements OnInit {
     this.calculateTotals();
   }
 
-  onItemChange(item: ReceiptItem, field: 'taxRate' | 'unitPrice' | 'totalPrice'): void {
+  onItemChange(item: ReceiptItem, field: 'taxRate' | 'unitPrice' | 'totalPrice' | 'kdvTutari'): void {
     if (field === 'unitPrice' || field === 'taxRate') {
       const taxAmount = item.unitPrice * (item.taxRate / 100);
       item.totalPrice = Number((item.unitPrice + taxAmount).toFixed(2));
+      item.kdvTutari = Number(taxAmount.toFixed(2));
     } else if (field === 'totalPrice') {
       item.unitPrice = Number((item.totalPrice / (1 + item.taxRate / 100)).toFixed(2));
+      item.kdvTutari = Number((item.totalPrice - item.unitPrice).toFixed(2));
+    } else if (field === 'kdvTutari') {
+      item.totalPrice = Number((item.unitPrice + (item.kdvTutari || 0)).toFixed(2));
     }
     this.calculateTotals();
   }
@@ -441,7 +453,7 @@ export class DashboardComponent implements OnInit {
     let tax = 0;
     this.items.forEach(item => {
       total += item.totalPrice;
-      const taxPart = item.totalPrice - item.unitPrice;
+      const taxPart = item.kdvTutari !== undefined ? item.kdvTutari : (item.totalPrice - item.unitPrice);
       tax += taxPart;
     });
     this.totalAmount = Number(total.toFixed(2));
@@ -682,13 +694,18 @@ export class DashboardComponent implements OnInit {
         this.imagePath = data.imagePath;
 
         if (data.items && data.items.length > 0) {
-          this.items = data.items.map((i: any) => ({
-            itemName: i.itemName || 'KDV Satırı',
-            quantity: i.quantity || 1,
-            unitPrice: i.unitPrice || 0,
-            totalPrice: i.totalPrice || 0,
-            taxRate: i.taxRate || i.tax_rate || 20
-          }));
+          this.items = data.items.map((i: any) => {
+            const u = i.unitPrice || 0;
+            const t = i.totalPrice || 0;
+            return {
+              itemName: i.itemName || 'KDV Satırı',
+              quantity: i.quantity || 1,
+              unitPrice: u,
+              totalPrice: t,
+              taxRate: i.taxRate || i.tax_rate || 20,
+              kdvTutari: Number((t - u).toFixed(2))
+            };
+          });
         } else {
           const fallbackMatrah = Number((this.totalAmount - this.taxAmount).toFixed(2));
           this.items = [{
@@ -696,7 +713,8 @@ export class DashboardComponent implements OnInit {
             quantity: 1,
             unitPrice: fallbackMatrah,
             totalPrice: this.totalAmount,
-            taxRate: 20
+            taxRate: 20,
+            kdvTutari: Number((this.totalAmount - fallbackMatrah).toFixed(2))
           }];
         }
 
