@@ -701,7 +701,7 @@ export class DashboardComponent implements OnInit {
         }
 
         if (data.imagePath) {
-          this.previewUrl = `http://localhost:5000/${data.imagePath}`;
+          this.previewUrl = `http://localhost:5000/processed/${data.imagePath}`;
           this.isPdf = data.imagePath.toLowerCase().endsWith('.pdf');
           this.safePdfUrl = null;
           this.pdfDocument = null;
