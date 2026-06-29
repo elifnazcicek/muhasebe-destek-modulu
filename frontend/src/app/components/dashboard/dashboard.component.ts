@@ -21,7 +21,7 @@ interface ReceiptItem {
 })
 export class DashboardComponent implements OnInit {
   // === TABS & PANELS STATE ===
-  leftTab: 'camera' | 'upload' = 'camera';
+  leftTab: 'camera' | 'upload' = 'upload';
   showPreview: boolean = false;
   isDragOver: boolean = false;
 
@@ -80,14 +80,6 @@ export class DashboardComponent implements OnInit {
   }
 
   // === LEFT PANEL METHODS ===
-  setLeftTab(tab: 'camera' | 'upload'): void {
-    this.leftTab = tab;
-  }
-
-  // Mock capturing image
-  captureImage(): void {
-    this.showStatus('Kamera özelliği Dashboard üzerinden değil, Kamera sayfasından kullanılmalıdır.', 'info');
-  }
 
   // File Upload OCR
   onFileSelected(event: any): void {

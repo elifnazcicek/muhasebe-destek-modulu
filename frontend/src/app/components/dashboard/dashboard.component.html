@@ -2,13 +2,8 @@
 
   <!-- ================= SOL KOLON: GÖRÜNTÜ ALMA / KAMERA / DOSYA ================= -->
   <section class="panel-section camera-section">
-    <div class="panel-header-tabs" *ngIf="!showPreview">
-      <button class="tab-btn" [class.active]="leftTab === 'camera'" (click)="setLeftTab('camera')">
-        📷 Kamera
-      </button>
-      <button class="tab-btn" [class.active]="leftTab === 'upload'" (click)="setLeftTab('upload')">
-        📁 Dosyadan Yükle
-      </button>
+    <div class="panel-header" *ngIf="!showPreview">
+      <h2>📁 Fiş Görseli Yükle</h2>
     </div>
     
     <div class="panel-header" *ngIf="showPreview">
@@ -17,19 +12,7 @@
 
     <div class="panel-content">
       <div class="view-container" *ngIf="!showPreview">
-        
-        <div class="camera-wrapper" *ngIf="leftTab === 'camera'">
-          <div class="video-placeholder">
-            <span class="live-tag">CANLI</span>
-            <div class="aim-guide"></div>
-            <img src="https://images.unsplash.com/photo-1554415707-6e8cfc93fe23?w=500&auto=format&fit=crop" alt="Live stream" class="live-stream-img" />
-          </div>
-          <button class="btn btn-primary btn-block" (click)="captureImage()" style="margin-top: 15px;">
-            📸 Fişi Yakala ve Tara
-          </button>
-        </div>
-
-        <div class="upload-area" *ngIf="leftTab === 'upload'" (click)="fileInput.click()"
+        <div class="upload-area" (click)="fileInput.click()"
              [class.drag-over]="isDragOver"
              (dragover)="onDragOver($event)"
              (dragenter)="onDragOver($event)"
