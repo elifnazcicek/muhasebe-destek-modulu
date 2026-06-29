@@ -38,6 +38,12 @@ export class ApiService {
     return this.http.put<any>(`${this.baseUrl}/receipt/${id}`, receipt);
   }
 
+  deleteReceipt(id: number, username: string): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/receipt/${id}?username=${encodeURIComponent(username)}`);
+  }
+
+
+
   // ==========================================================
   // AUTH ENDPOINTS (Kullanıcı Girişi ve Kayıt)
   // ==========================================================

@@ -81,6 +81,7 @@ export class LoginComponent implements OnInit {
           localStorage.setItem('isLoggedIn', 'true');
           localStorage.setItem('username', res.username);
           localStorage.setItem('token', res.token);
+          localStorage.setItem('role', res.role || 'User');
 
           if (this.rememberMe) {
             localStorage.setItem('rememberMe', 'true');

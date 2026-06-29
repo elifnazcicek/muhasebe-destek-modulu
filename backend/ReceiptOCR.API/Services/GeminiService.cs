@@ -17,7 +17,7 @@ namespace ReceiptOCR.API.Services
             _configuration = configuration;
         }
 
-        public async Task<ExtractedReceiptData?> ScanReceiptAsync(byte[] imageBytes)
+        public async Task<ExtractedReceiptData?> ScanReceiptAsync(byte[] fileBytes, string mimeType = "image/jpeg")
         {
             var apiKey = _configuration["Gemini:ApiKey"];
             var modelName = _configuration["Gemini:ModelName"] ?? "gemini-1.5-flash";
@@ -30,16 +30,23 @@ namespace ReceiptOCR.API.Services
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={apiKey}";
             
-            var base64Image = Convert.ToBase64String(imageBytes);
+            var base64File = Convert.ToBase64String(fileBytes);
 
-            var systemPrompt = @"Sen profesyonel bir muhasebe veri giriş asistanısın. Görevin, sana gönderilen fiş veya fatura görsellerini analiz etmek ve bilgileri sadece belirtilen JSON formatında dönmektir. JSON dışında hiçbir açıklama veya markdown işareti yazma.
-Bu fiş görselini analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uyarak çıkar:
+            var systemPrompt = @"Sen profesyonel bir muhasebe veri giriş asistanısın. Görevin, sana gönderilen fiş veya fatura görsellerini/belgelerini analiz etmek ve bilgileri sadece belirtilen JSON formatında dönmektir. JSON dışında hiçbir açıklama veya markdown işareti yazma.
+Bu fiş veya fatura belgesini analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uyarak çıkar:
 1. firma_adi: Fişi veya faturayı düzenleyen işletmenin adı. ÖNEMLİ: İşletme adını sadece A.Ş., Anonim Şirketi, Ltd. Şti., Limited Şirketi, Şti gibi şirket türünü belirten ibareye kadar temiz şekilde al. Sonrasındaki adres, şube, telefon veya vergi dairesi gibi ekleri dahil etme. (Örn: 'MİGROS TİCARET A.Ş. ANKARA ŞUBESİ' yerine 'MİGROS TİCARET A.Ş.').
 2. vkn_tckn: Fişi/faturayı düzenleyen firmanın 10 haneli Vergi Kimlik Numarası (VKN) veya 11 haneli T.C. Kimlik Numarası (TCKN). Bulamazsan boş bırak.
 3. tarih: GG.AA.YYYY formatında tarih.
 4. fis_no: Fiş veya fatura numarası. (Fis No veya Fatura No ibaresinin yanındaki numara).
 5. kdv_orani_yuzde: Fişte uygulanan en yüksek KDV oranı (Sadece sayı, örn: 20).
 6. toplam_tutar: Fişin en altındaki genel toplam tutar (Sadece sayı, örn: 150.50).
+7. kdv_detaylari: Fişin en altında (genellikle TOPKDV veya TOPLAM satırlarının altında) KDV oranlarına göre KDV tutarları, matrahlar ve toplamların ayrı ayrı döküldüğü satırlar varsa (Örn: '%1 *3.044,52 *30,45 *3.074,97' veya '%20 *519,04 *103,81 *622,85' gibi satırlar), bu satırlardaki değerleri tam olarak oku ve listele. Her satır için:
+   - kdv_orani: KDV yüzdesi (Sadece sayı, örn: 1, 10, 20)
+   - matrah: KDV hariç matrah tutarı (Sadece sayı, örn: 3044.52)
+   - kdv_tutari: O KDV oranının tutarı (Sadece sayı, örn: 30.45)
+   - toplam_tutar: O KDV oranının dahil olduğu toplam tutar (Sadece sayı, örn: 3074.97)
+   Eğer fişte bu detaylı KDV döküm satırları yoksa, 'kdv_detaylari' alanını null veya boş liste olarak dön.
+
 JSON Şeması:
 {
 ""firma_adi"": ""Temiz Firma Adı"",
@@ -47,7 +54,15 @@ JSON Şeması:
 ""tarih"": ""GG.AA.YYYY"",
 ""fis_no"": ""Fiş No"",
 ""kdv_orani_yuzde"": 20,
-""toplam_tutar"": 150.50
+""toplam_tutar"": 150.50,
+""kdv_detaylari"": [
+  {
+    ""kdv_orani"": 1,
+    ""matrah"": 3044.52,
+    ""kdv_tutari"": 30.45,
+    ""toplam_tutar"": 3074.97
+  }
+]
 }";
 
             var payload = new
@@ -63,8 +78,8 @@ JSON Şeması:
                             { 
                                 inline_data = new 
                                 {
-                                    mime_type = "image/jpeg",
-                                    data = base64Image
+                                    mime_type = mimeType,
+                                    data = base64File
                                 }
                             }
                         }

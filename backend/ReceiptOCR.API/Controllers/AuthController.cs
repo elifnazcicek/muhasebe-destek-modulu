@@ -65,7 +65,8 @@ namespace ReceiptOCR.API.Controllers
             {
                 Success = true,
                 Token = token,
-                Username = user.Username
+                Username = user.Username,
+                Role = user.Role
             });
         }
 
@@ -105,7 +106,8 @@ namespace ReceiptOCR.API.Controllers
             {
                 Success = true,
                 Username = user.Username,
-                Token = GenerateJwtToken(user)
+                Token = GenerateJwtToken(user),
+                Role = user.Role
             });
         }
 

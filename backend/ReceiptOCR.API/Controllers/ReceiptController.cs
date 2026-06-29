@@ -23,7 +23,7 @@ public class ReceiptController : ControllerBase
     // Desteklenen dosya formatları
     private static readonly HashSet<string> AllowedContentTypes = new(StringComparer.OrdinalIgnoreCase)
     {
-        "image/jpeg", "image/png", "image/webp", "image/bmp"
+        "image/jpeg", "image/png", "image/webp", "image/bmp", "application/pdf"
     };
 
     public ReceiptController(
@@ -122,7 +122,9 @@ public class ReceiptController : ControllerBase
             return NotFound(ApiResponse<object>.Fail("Dosya bulunamadı."));
         }
 
-        return PhysicalFile(filePath, "image/jpeg", filename);
+        var ext = Path.GetExtension(filename).ToLowerInvariant();
+        var contentType = ext == ".pdf" ? "application/pdf" : "image/jpeg";
+        return PhysicalFile(filePath, contentType, filename);
     }
 
     // =========================================================================
@@ -146,15 +148,18 @@ public class ReceiptController : ControllerBase
 
         try
         {
-            // 1. Önce görüntüyü işle (döndürme, kırpma, netleştirme)
+            // 1. Önce görüntüyü/belgeyi işle
             using var stream = file.OpenReadStream();
             var preprocessResult = await _preprocessingService.ProcessAsync(stream, file.FileName);
 
             // 2. İşlenmiş dosyayı diskten oku
             var processedFilePath = Path.Combine(_preprocessingService.GetProcessedDir(), preprocessResult.ProcessedFileName);
-            var imageBytes = await System.IO.File.ReadAllBytesAsync(processedFilePath);
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(processedFilePath);
 
-            var result = await _geminiService.ScanReceiptAsync(imageBytes);
+            var ext = Path.GetExtension(preprocessResult.ProcessedFileName).ToLowerInvariant();
+            var mimeType = ext == ".pdf" ? "application/pdf" : "image/jpeg";
+
+            var result = await _geminiService.ScanReceiptAsync(fileBytes, mimeType);
 
             if (result == null)
             {
@@ -186,29 +191,58 @@ public class ReceiptController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail("Mağaza adı boş olamaz."));
             }
 
-            var expense = new Expense
+            if (request.VknTckn?.Trim().Length > 11)
             {
-                FirmaAdi = request.MerchantName,
-                FisNo = request.FisNo,
-                VknTckn = request.VknTckn,
-                ToplamTutar = request.TotalAmount,
-                KdvTutari = request.TaxAmount,
-                KaydedenKullanici = request.CreatedBy,
-                CreatedDate = DateTime.Now
-            };
-
-            // Tarih ayrıştırma
-            if (DateTime.TryParse(request.ReceiptDate, out var parsedDate))
-            {
-                expense.Tarih = parsedDate;
-            }
-            else
-            {
-                expense.Tarih = DateTime.Today;
+                var errorMsg = "VKN/TCKN alanı 11 karakter sınırını aştı. Lütfen kontrol edin.";
+                await LogErrorToDbAsync("Confirm_Validation", new ArgumentException(errorMsg), request.CreatedBy);
+                return BadRequest(ApiResponse<object>.Fail(errorMsg));
             }
 
-            // Veritabanına kaydet
-            _context.Expenses.Add(expense);
+            var itemsToProcess = request.Items;
+            if (itemsToProcess == null || itemsToProcess.Count == 0)
+            {
+                itemsToProcess = new List<ConfirmRequestItem>
+                {
+                    new ConfirmRequestItem
+                    {
+                        ItemName = "Genel Gider",
+                        Quantity = 1,
+                        UnitPrice = request.TotalAmount - request.TaxAmount,
+                        TotalPrice = request.TotalAmount,
+                        TaxRate = 20
+                    }
+                };
+            }
+
+            var expensesSaved = new List<Expense>();
+            foreach (var item in itemsToProcess)
+            {
+                var expense = new Expense
+                {
+                    FirmaAdi = request.MerchantName,
+                    FisNo = request.FisNo,
+                    VknTckn = request.VknTckn?.Trim(),
+                    KdvOrani = item.TaxRate,
+                    Matrah = item.UnitPrice,
+                    KdvTutari = item.TotalPrice - item.UnitPrice,
+                    ToplamTutar = item.TotalPrice,
+                    FisinGenelToplami = request.TotalAmount,
+                    KaydedenKullanici = request.CreatedBy,
+                    CreatedDate = DateTime.Now
+                };
+
+                if (DateTime.TryParse(request.ReceiptDate, out var parsedDate))
+                {
+                    expense.Tarih = parsedDate;
+                }
+                else
+                {
+                    expense.Tarih = DateTime.Today;
+                }
+
+                _context.Expenses.Add(expense);
+                expensesSaved.Add(expense);
+            }
 
             // Log ekle
             _context.SystemLogs.Add(new SystemLog
@@ -216,13 +250,16 @@ public class ReceiptController : ControllerBase
                 Username = request.CreatedBy,
                 ActionType = "Confirm_Receipt",
                 Status = "SUCCESS",
-                Details = $"Fiş kaydedildi: {request.MerchantName} - Tutar: {request.TotalAmount}"
+                Details = $"Fiş kaydedildi ({expensesSaved.Count} KDV satırı): {request.MerchantName} - Toplam: {request.TotalAmount}"
             });
 
             await _context.SaveChangesAsync();
 
             // Excel (.xlsx) dosyasına yazma işlemini kuyruğa ekle
-            _excelQueueService.QueueWrite(expense, "ADD");
+            foreach (var exp in expensesSaved)
+            {
+                _excelQueueService.QueueWrite(exp, "ADD");
+            }
 
             return Ok(ApiResponse<object>.Ok(null, "Fiş başarıyla veritabanına kaydedildi ve Excel yazma kuyruğuna eklendi."));
         }
@@ -247,13 +284,13 @@ public class ReceiptController : ControllerBase
             List<Expense> expenses;
             if (string.IsNullOrEmpty(username))
             {
-                expenses = await _context.Expenses.OrderByDescending(e => e.Tarih).ToListAsync();
+                expenses = await _context.Expenses.OrderByDescending(e => e.CreatedDate).ToListAsync();
             }
             else
             {
                 expenses = await _context.Expenses
                     .Where(e => e.KaydedenKullanici == username)
-                    .OrderByDescending(e => e.Tarih)
+                    .OrderByDescending(e => e.CreatedDate)
                     .ToListAsync();
             }
 
@@ -268,17 +305,18 @@ public class ReceiptController : ControllerBase
                 vknTckn = e.VknTckn,
                 totalAmount = e.ToplamTutar,
                 taxAmount = e.KdvTutari,
+                fisinGenelToplami = e.FisinGenelToplami,
                 imagePath = (string?)null,
                 createdBy = e.KaydedenKullanici,
                 items = new[]
                 {
                     new
                     {
-                        itemName = "Masraf Kalemi",
+                        itemName = "KDV Detayı",
                         quantity = 1,
-                        unitPrice = e.ToplamTutar,
+                        unitPrice = e.Matrah,
                         totalPrice = e.ToplamTutar,
-                        tax_rate = 20
+                        taxRate = e.KdvOrani
                     }
                 }
             }).ToList();
@@ -317,17 +355,18 @@ public class ReceiptController : ControllerBase
                 vknTckn = expense.VknTckn,
                 totalAmount = expense.ToplamTutar,
                 taxAmount = expense.KdvTutari,
+                fisinGenelToplami = expense.FisinGenelToplami,
                 imagePath = (string?)null,
                 createdBy = expense.KaydedenKullanici,
                 items = new[]
                 {
                     new
                     {
-                        itemName = "Masraf Kalemi",
+                        itemName = "KDV Detayı",
                         quantity = 1,
-                        unitPrice = expense.ToplamTutar,
+                        unitPrice = expense.Matrah,
                         totalPrice = expense.ToplamTutar,
-                        tax_rate = 20
+                        taxRate = expense.KdvOrani
                     }
                 }
             };
@@ -356,11 +395,52 @@ public class ReceiptController : ControllerBase
                 return NotFound(ApiResponse<object>.Fail("Masraf kaydı bulunamadı."));
             }
 
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == request.CreatedBy.ToLower());
+            string userRole = user?.Role ?? "User";
+
+            if (expense.KaydedenKullanici != request.CreatedBy && userRole != "Admin")
+            {
+                return StatusCode(403, ApiResponse<object>.Fail("Bu kaydı sadece oluşturan kişi veya bir yönetici güncelleyebilir."));
+            }
+
+            if (string.IsNullOrEmpty(request.MerchantName))
+            {
+                return BadRequest(ApiResponse<object>.Fail("Mağaza adı boş olamaz."));
+            }
+
+            if (request.VknTckn?.Trim().Length > 11)
+            {
+                var errorMsg = "VKN/TCKN alanı 11 karakter sınırını aştı. Lütfen kontrol edin.";
+                await LogErrorToDbAsync("Update_Validation", new ArgumentException(errorMsg), request.CreatedBy);
+                return BadRequest(ApiResponse<object>.Fail(errorMsg));
+            }
+
+            var itemsToProcess = request.Items;
+            if (itemsToProcess == null || itemsToProcess.Count == 0)
+            {
+                itemsToProcess = new List<ConfirmRequestItem>
+                {
+                    new ConfirmRequestItem
+                    {
+                        ItemName = "Genel Gider",
+                        Quantity = 1,
+                        UnitPrice = request.TotalAmount - request.TaxAmount,
+                        TotalPrice = request.TotalAmount,
+                        TaxRate = 20
+                    }
+                };
+            }
+
+            // İlk kalemi bu satırda güncelle
+            var mainItem = itemsToProcess[0];
             expense.FirmaAdi = request.MerchantName;
             expense.FisNo = request.FisNo;
-            expense.VknTckn = request.VknTckn;
-            expense.ToplamTutar = request.TotalAmount;
-            expense.KdvTutari = request.TaxAmount;
+            expense.VknTckn = request.VknTckn?.Trim();
+            expense.KdvOrani = mainItem.TaxRate;
+            expense.Matrah = mainItem.UnitPrice;
+            expense.KdvTutari = mainItem.TotalPrice - mainItem.UnitPrice;
+            expense.ToplamTutar = mainItem.TotalPrice;
+            expense.FisinGenelToplami = request.TotalAmount;
             expense.KaydedenKullanici = request.CreatedBy;
 
             if (DateTime.TryParse(request.ReceiptDate, out var date))
@@ -384,6 +464,41 @@ public class ReceiptController : ControllerBase
             // Excel (.xlsx) dosyasına güncelleme işlemini kuyruğa ekle
             _excelQueueService.QueueWrite(expense, "UPDATE");
 
+            // Eğer birden fazla kalem varsa, diğerlerini yeni satır olarak ekle
+            if (itemsToProcess.Count > 1)
+            {
+                for (int i = 1; i < itemsToProcess.Count; i++)
+                {
+                    var item = itemsToProcess[i];
+                    var newExpense = new Expense
+                    {
+                        FirmaAdi = request.MerchantName,
+                        FisNo = request.FisNo,
+                        VknTckn = request.VknTckn?.Trim(),
+                        KdvOrani = item.TaxRate,
+                        Matrah = item.UnitPrice,
+                        KdvTutari = item.TotalPrice - item.UnitPrice,
+                        ToplamTutar = item.TotalPrice,
+                        FisinGenelToplami = request.TotalAmount,
+                        KaydedenKullanici = request.CreatedBy,
+                        CreatedDate = DateTime.Now
+                    };
+
+                    if (DateTime.TryParse(request.ReceiptDate, out var d))
+                    {
+                        newExpense.Tarih = d;
+                    }
+                    else
+                    {
+                        newExpense.Tarih = DateTime.Today;
+                    }
+
+                    _context.Expenses.Add(newExpense);
+                    await _context.SaveChangesAsync();
+                    _excelQueueService.QueueWrite(newExpense, "ADD");
+                }
+            }
+
             return Ok(ApiResponse<object>.Ok(null, "Fiş başarıyla güncellendi ve Excel yazma kuyruğuna eklendi."));
         }
         catch (Exception ex)
@@ -391,6 +506,52 @@ public class ReceiptController : ControllerBase
             _logger.LogError(ex, "[API] Update hatası.");
             await LogErrorToDbAsync($"Update_{id}", ex, request?.CreatedBy);
             return StatusCode(500, ApiResponse<object>.Fail($"Güncelleme Hatası: {ex.Message}"));
+        }
+    }
+
+    /// <summary>
+    /// Fiş/Fatura kaydını siler (Yalnızca Admin).
+    /// </summary>
+    [HttpDelete("{id}")]
+    public async Task<IActionResult> Delete(int id, [FromQuery] string username)
+    {
+        try
+        {
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == username.ToLower());
+            if (user == null || user.Role != "Admin")
+            {
+                return StatusCode(403, ApiResponse<object>.Fail("Bu işlemi gerçekleştirmek için yönetici (Admin) yetkiniz olmalıdır."));
+            }
+
+            var expense = await _context.Expenses.FindAsync(id);
+            if (expense == null)
+            {
+                return NotFound(ApiResponse<object>.Fail("Masraf kaydı bulunamadı."));
+            }
+
+            _context.Expenses.Remove(expense);
+
+            // Log ekle
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Username = username,
+                ActionType = "Delete_Receipt",
+                Status = "SUCCESS",
+                Details = $"Fiş silindi: ID {id} - {expense.FirmaAdi} - Tutar: {expense.ToplamTutar}"
+            });
+
+            await _context.SaveChangesAsync();
+
+            // Excel dosyasından silmek için kuyruğa ekle
+            _excelQueueService.QueueWrite(expense, "DELETE");
+
+            return Ok(ApiResponse<object>.Ok(null, "Fatura başarıyla silindi."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Delete hatası.");
+            await LogErrorToDbAsync($"Delete_{id}", ex, username);
+            return StatusCode(500, ApiResponse<object>.Fail($"Silme Hatası: {ex.Message}"));
         }
     }
 
@@ -419,9 +580,12 @@ public class ReceiptController : ControllerBase
             worksheet.Cell(1, 2).Value = "Firma Adi";
             worksheet.Cell(1, 3).Value = "Fis No";
             worksheet.Cell(1, 4).Value = "Vkn Tckn";
-            worksheet.Cell(1, 5).Value = "Kdv Tutari";
-            worksheet.Cell(1, 6).Value = "Toplam Tutar";
-            worksheet.Cell(1, 7).Value = "Kaydeden Kullanici";
+            worksheet.Cell(1, 5).Value = "KDV Oranı";
+            worksheet.Cell(1, 6).Value = "Kdv Tutari";
+            worksheet.Cell(1, 7).Value = "Toplam Tutar";
+            worksheet.Cell(1, 8).Value = "Matrah";
+            worksheet.Cell(1, 9).Value = "Fişin Genel Toplamı";
+            worksheet.Cell(1, 10).Value = "Kaydeden Kullanici";
 
             var headerRow = worksheet.Row(1);
             headerRow.Style.Font.Bold = true;
@@ -448,12 +612,17 @@ public class ReceiptController : ControllerBase
                 worksheet.Cell(row, 2).Value = exp.FirmaAdi;
                 worksheet.Cell(row, 3).Value = exp.FisNo ?? "";
                 worksheet.Cell(row, 4).Value = exp.VknTckn ?? "";
-                worksheet.Cell(row, 5).Value = exp.KdvTutari;
-                worksheet.Cell(row, 6).Value = exp.ToplamTutar;
-                worksheet.Cell(row, 7).Value = exp.KaydedenKullanici;
+                worksheet.Cell(row, 5).Value = exp.KdvOrani + "%";
+                worksheet.Cell(row, 6).Value = exp.KdvTutari;
+                worksheet.Cell(row, 7).Value = exp.ToplamTutar;
+                worksheet.Cell(row, 8).Value = exp.Matrah;
+                worksheet.Cell(row, 9).Value = exp.FisinGenelToplami;
+                worksheet.Cell(row, 10).Value = exp.KaydedenKullanici;
 
-                worksheet.Cell(row, 5).Style.NumberFormat.Format = "0.00";
                 worksheet.Cell(row, 6).Style.NumberFormat.Format = "0.00";
+                worksheet.Cell(row, 7).Style.NumberFormat.Format = "0.00";
+                worksheet.Cell(row, 8).Style.NumberFormat.Format = "0.00";
+                worksheet.Cell(row, 9).Style.NumberFormat.Format = "0.00";
                 row++;
             }
 

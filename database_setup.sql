@@ -82,8 +82,11 @@ BEGIN
         [FirmaAdi]          NVARCHAR(255)     NOT NULL,
         [FisNo]             NVARCHAR(50)      NULL,
         [VknTckn]           NVARCHAR(11)      NULL,
+        [KdvOrani]          INT               NOT NULL DEFAULT 20,
+        [Matrah]            DECIMAL(10,2)     NOT NULL DEFAULT 0.00,
         [KdvTutari]         DECIMAL(10,2)     NOT NULL DEFAULT 0.00,
         [ToplamTutar]       DECIMAL(10,2)     NOT NULL,
+        [FisinGenelToplami] DECIMAL(10,2)     NOT NULL DEFAULT 0.00,
         [KaydedenKullanici] NVARCHAR(50)      NOT NULL,
         [CreatedDate]       DATETIME2(7)      NOT NULL DEFAULT GETDATE(),
         
@@ -102,6 +105,8 @@ BEGIN
 END
 GO
 
+
+
 -- =======================================================
 -- TABLO 3: Settings (Sistem Ayarları)
 -- =======================================================
@@ -115,11 +120,9 @@ BEGIN
         CONSTRAINT [PK_Settings] PRIMARY KEY CLUSTERED ([Key] ASC)
     );
     
-    -- Varsayılan ayarları yükle (Seed Data)
     INSERT INTO [dbo].[Settings] ([Key], [Value], [Description]) VALUES
     (N'GeminiApiKey', N'YOUR_API_KEY_HERE', N'Google Gemini API erişim anahtarı'),
     (N'ExcelPath', N'C:\Muhasebe\Masraflar.xlsx', N'Muhasebe masraf kayıtlarının yazılacağı Excel dosyasının yolu'),
-    (N'DefaultVatRates', N'20,10,1', N'Sistemde tanımlı olan varsayılan KDV oranları (virgülle ayrılmış)'),
     (N'LogRetentionDays', N'365', N'Sistem loglarının veritabanında saklanacağı gün sayısı'),
     (N'BackupFolder', N'C:\Backup', N'Otomatik veritabanı yedeklerinin alınacağı klasör yolu');
 

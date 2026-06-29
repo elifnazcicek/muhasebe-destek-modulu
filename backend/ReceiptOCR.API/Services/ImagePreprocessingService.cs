@@ -67,6 +67,26 @@ public class ImagePreprocessingService
         _logger.LogInformation("[Pre-processing] Dosya kaydedildi: {FileName} ({Size:F1} KB)", 
             savedFileName, originalSizeKb);
 
+        if (ext == ".pdf")
+        {
+            var pdfProcessedFileName = $"receipt_{timestamp}_{uniqueId}_processed.pdf";
+            var pdfProcessedPath = Path.Combine(_processedDir, pdfProcessedFileName);
+            File.Copy(savedPath, pdfProcessedPath, true);
+
+            steps.Add("PDF belgesi algılandı. Görsel optimizasyon adımları (boyutlandırma/sıkıştırma) uygulanamaz.");
+            steps.Add("Dosya doğrudan işlem adımlarından aktarıldı.");
+
+            return new PreprocessingResultInternal
+            {
+                OriginalFileName = savedFileName,
+                OriginalSizeKb = Math.Round(originalSizeKb, 1),
+                ProcessedFileName = pdfProcessedFileName,
+                ProcessedSizeKb = Math.Round(originalSizeKb, 1),
+                CompressionRatio = "%0 (PDF - İşlemsiz)",
+                AppliedSteps = steps
+            };
+        }
+
         // --- 2. Format Doğrulama ---
         Image originalImage;
         try

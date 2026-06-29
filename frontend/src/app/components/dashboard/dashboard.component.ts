@@ -1,7 +1,8 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 
 interface ReceiptItem {
   itemName: string;
@@ -22,10 +23,26 @@ export class DashboardComponent implements OnInit {
   // === TABS & PANELS STATE ===
   leftTab: 'camera' | 'upload' = 'camera';
   showPreview: boolean = false;
+  isDragOver: boolean = false;
 
   // === LEFT PANEL ===
   previewUrl: string | null = null;
   selectedFile: File | null = null;
+  isPdf: boolean = false;
+  safePdfUrl: SafeResourceUrl | null = null;
+
+  // === PDF.JS STATE ===
+  pdfDocument: any = null;
+  pdfCurrentPage: number = 1;
+  pdfTotalPages: number = 0;
+
+  // === ZOOM & PAN STATE ===
+  zoomLevel: number = 1;
+  panX: number = 0;
+  panY: number = 0;
+  isPanning: boolean = false;
+  startX: number = 0;
+  startY: number = 0;
 
   // === MIDDLE PANEL ===
   receiptId: number | null = null;
@@ -40,6 +57,7 @@ export class DashboardComponent implements OnInit {
   
   statusMessage: string = '';
   statusType: 'success' | 'info' | 'error' | null = null;
+  statusTimeoutId: any = null;
 
   // === RIGHT PANEL: ARCHIVE ===
   receiptsList: any[] = [];
@@ -47,9 +65,16 @@ export class DashboardComponent implements OnInit {
   searchQuery: string = '';
   loadingArchive: boolean = false;
 
-  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef) {}
+  // === ROLE & INSPECT STATE ===
+  isInspectMode: boolean = false;
+  currentUserRole: string = 'User';
+  currentUsername: string = '';
+
+  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef, private sanitizer: DomSanitizer) {}
 
   ngOnInit(): void {
+    this.currentUsername = localStorage.getItem('username') || '';
+    this.currentUserRole = localStorage.getItem('role') || 'User';
     this.clearForm();
     this.fetchReceiptsList();
   }
@@ -68,61 +93,330 @@ export class DashboardComponent implements OnInit {
   onFileSelected(event: any): void {
     const file = event.target.files[0];
     if (file) {
+      this.processOcrFile(file);
+    }
+  }
+
+  processOcrFile(file: File | Blob): void {
+    if (!file) return;
+    this.resetZoom();
+
+    this.isPdf = false;
+    this.safePdfUrl = null;
+    this.pdfDocument = null;
+    this.pdfCurrentPage = 1;
+    this.pdfTotalPages = 0;
+
+    let isPdfFile = false;
+    if (file instanceof File) {
       this.selectedFile = file;
-      
+      if (file.name.toLowerCase().endsWith('.pdf') || file.type === 'application/pdf') {
+        isPdfFile = true;
+      }
+    } else {
+      this.selectedFile = new File([file], 'pasted_receipt.jpg', { type: file.type });
+      if (file.type === 'application/pdf') {
+        isPdfFile = true;
+      }
+    }
+
+    if (isPdfFile) {
+      this.isPdf = true;
+      this.showStatus('PDF belgesi yükleniyor ve sayfalar çıkarılıyor...', 'info');
+      this.cdr.detectChanges();
+
       const reader = new FileReader();
       reader.onload = (e: any) => {
-        this.previewUrl = e.target.result;
-        this.cdr.detectChanges();
+        const arrayBuffer = e.target.result;
+        const pdfjsLib = (window as any).pdfjsLib;
+        if (pdfjsLib) {
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+          pdfjsLib.getDocument({ data: arrayBuffer }).promise.then(
+            (pdf: any) => {
+              this.pdfDocument = pdf;
+              this.pdfTotalPages = pdf.numPages;
+              this.pdfCurrentPage = 1;
+              this.renderPdfPage();
+            },
+            (err: any) => {
+              this.showStatus('PDF yüklenemedi: ' + err.message, 'error', 5000);
+              this.cdr.detectChanges();
+            }
+          );
+        } else {
+          this.showStatus('PDF.js kütüphanesi yüklenemedi. index.html dosyasını kontrol edin.', 'error', 5000);
+          this.cdr.detectChanges();
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Normal görsel yükleme
+      const reader = new FileReader();
+      reader.onload = (e: any) => {
+        setTimeout(() => {
+          this.previewUrl = e.target.result;
+          this.showPreview = true;
+          this.cdr.detectChanges();
+        }, 0);
       };
       reader.readAsDataURL(file);
 
-      this.showStatus('Dosya yükleniyor ve Gemini OCR tarafından çözümleniyor...', 'info');
-      this.cdr.detectChanges();
-      
-      // BİZİM GERÇEK .NET ENDPOINT'İMİZİ ÇAĞIRIR (/api/receipt/scan)
-      this.apiService.scanReceipt(file).subscribe({
-        next: (res) => {
-          // Gemini'den dönen ExtractedReceiptData modeli
+      // Otomatik tara
+      this.triggerOcrScan(file);
+    }
+  }
+
+  triggerOcrScan(fileToScan: File | Blob): void {
+    this.showStatus('Dosya çözümleniyor...', 'info');
+    this.cdr.detectChanges();
+    
+    this.apiService.scanReceipt(fileToScan).subscribe({
+      next: (res) => {
+        setTimeout(() => {
           const data = res.data; 
           this.merchantName = data.firma_adi || '';
           this.vknTckn = data.vkn_tckn || '';
           this.receiptDate = this.formatOcrDate(data.tarih);
           this.fisNo = data.fis_no || '';
-          this.totalAmount = data.toplam_tutar || 0;
-          const calculatedTax = (data.toplam_tutar * data.kdv_orani_yuzde) / (100 + data.kdv_orani_yuzde) || 0;
-          this.taxAmount = Number(calculatedTax.toFixed(2));
-          this.imagePath = null; // Opsiyonel, sunucudan dönen yolu atayabiliriz
+          
+          const ocrTotal = data.toplam_tutar || 0;
 
-          this.items = [];
+          if (data.kdv_detaylari && data.kdv_detaylari.length > 0) {
+            this.items = data.kdv_detaylari.map((detail: any) => ({
+              itemName: 'KDV Satırı',
+              quantity: 1,
+              unitPrice: detail.matrah || 0,
+              totalPrice: detail.toplam_tutar || 0,
+              taxRate: detail.kdv_orani || 20
+            }));
+          } else {
+            const ocrTaxRate = data.kdv_orani_yuzde || 20;
+            const ocrMatrah = Number((ocrTotal / (1 + ocrTaxRate / 100)).toFixed(2));
+            this.items = [{
+              itemName: 'KDV Satırı',
+              quantity: 1,
+              unitPrice: ocrMatrah,
+              totalPrice: ocrTotal,
+              taxRate: ocrTaxRate
+            }];
+          }
+
+          this.calculateTotals();
+          this.imagePath = null;
 
           this.showPreview = true;
-          this.showStatus('OCR tamamlandı!', 'success');
+          this.showStatus('OCR tamamlandı!', 'success', 6000);
           this.cdr.detectChanges();
-          setTimeout(() => {
-            this.clearStatus();
-            this.cdr.detectChanges();
-          }, 2500);
-        },
-        error: (err) => {
-          this.showStatus('Görüntü okunamadı: ' + err.message, 'error');
+        }, 0);
+      },
+      error: (err) => {
+        setTimeout(() => {
+          const errorMsg = err.error?.error || err.error?.message || err.message;
+          this.showStatus('Görüntü okunamadı: ' + errorMsg, 'error', 5000);
           this.cdr.detectChanges();
-        }
+        }, 0);
+      }
+    });
+  }
+
+  renderPdfPage(): void {
+    if (!this.pdfDocument) return;
+    this.showStatus(`Sayfa ${this.pdfCurrentPage} çiziliyor...`, 'info', 2000);
+    this.cdr.detectChanges();
+
+    this.pdfDocument.getPage(this.pdfCurrentPage).then((page: any) => {
+      const viewport = page.getViewport({ scale: 2.0 }); // 2.0x scale keeps it crisp for OCR
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const context = canvas.getContext('2d');
+
+      const renderContext = {
+        canvasContext: context,
+        viewport: viewport
+      };
+
+      page.render(renderContext).promise.then(() => {
+        this.previewUrl = canvas.toDataURL('image/jpeg', 0.90);
+        this.showPreview = true;
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            this.selectedFile = new File([blob], `pdf_page_${this.pdfCurrentPage}.jpg`, { type: 'image/jpeg' });
+            
+            // Sayfa her yüklendiğinde/değiştiğinde otomatik tara
+            this.scanActivePage();
+          }
+          this.cdr.detectChanges();
+        }, 'image/jpeg', 0.90);
       });
+    });
+  }
+
+  prevPdfPage(): void {
+    if (this.pdfCurrentPage > 1) {
+      this.pdfCurrentPage--;
+      this.renderPdfPage();
+    }
+  }
+
+  nextPdfPage(): void {
+    if (this.pdfCurrentPage < this.pdfTotalPages) {
+      this.pdfCurrentPage++;
+      this.renderPdfPage();
+    }
+  }
+
+  scanActivePage(): void {
+    if (this.selectedFile) {
+      this.triggerOcrScan(this.selectedFile);
+    } else {
+      this.showStatus('Taranacak sayfa resmi hazır değil.', 'error', 4000);
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = true;
+    this.cdr.detectChanges();
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+    this.cdr.detectChanges();
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragOver = false;
+    this.cdr.detectChanges();
+
+    if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+      const file = event.dataTransfer.files[0];
+      if (file.type.startsWith('image/') || file.type === 'application/pdf') {
+        setTimeout(() => {
+          this.processOcrFile(file);
+        }, 0);
+      } else {
+        this.showStatus('Lütfen geçerli bir belge veya görsel sürükleyin (PNG, JPG, JPEG, PDF).', 'error', 4000);
+      }
+    }
+  }
+
+  @HostListener('window:dragover', ['$event'])
+  onWindowDragOver(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  @HostListener('window:drop', ['$event'])
+  onWindowDrop(event: DragEvent): void {
+    event.preventDefault();
+  }
+
+  @HostListener('window:paste', ['$event'])
+  onPaste(event: ClipboardEvent): void {
+    const items = event.clipboardData?.items;
+    if (items) {
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            event.preventDefault();
+            this.showStatus('Panodan görsel algılandı, işleniyor...', 'info', 2000);
+            setTimeout(() => {
+              this.processOcrFile(file);
+            }, 0);
+            break;
+          }
+        }
+      }
     }
   }
 
   resetInput(): void {
     this.previewUrl = null;
     this.selectedFile = null;
+    this.isPdf = false;
+    this.safePdfUrl = null;
+    this.pdfDocument = null;
+    this.pdfCurrentPage = 1;
+    this.pdfTotalPages = 0;
     this.showPreview = false;
     this.clearStatus();
+    this.resetZoom();
+  }
+
+  // === ZOOM & PAN METHODS ===
+  zoomIn(factor: number = 0.2): void {
+    this.zoomLevel = Math.min(this.zoomLevel + factor, 5);
+    this.cdr.detectChanges();
+  }
+
+  zoomOut(factor: number = 0.2): void {
+    this.zoomLevel = Math.max(this.zoomLevel - factor, 1);
+    if (this.zoomLevel === 1) {
+      this.panX = 0;
+      this.panY = 0;
+    }
+    this.cdr.detectChanges();
+  }
+
+  resetZoom(): void {
+    this.zoomLevel = 1;
+    this.panX = 0;
+    this.panY = 0;
+    this.isPanning = false;
+    this.cdr.detectChanges();
+  }
+
+  startPan(event: MouseEvent): void {
+    if (this.zoomLevel > 1) {
+      event.preventDefault();
+      this.isPanning = true;
+      this.startX = event.clientX - this.panX;
+      this.startY = event.clientY - this.panY;
+      this.cdr.detectChanges();
+    }
+  }
+
+  pan(event: MouseEvent): void {
+    if (this.isPanning && this.zoomLevel > 1) {
+      event.preventDefault();
+      this.panX = event.clientX - this.startX;
+      this.panY = event.clientY - this.startY;
+      this.cdr.detectChanges();
+    }
+  }
+
+  endPan(): void {
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.cdr.detectChanges();
+    }
+  }
+
+  @HostListener('wheel', ['$event'])
+  onWheel(event: WheelEvent): void {
+    const target = event.target as HTMLElement;
+    if (target && (target.classList.contains('captured-image') || target.closest('.preview-wrapper'))) {
+      event.preventDefault();
+      const zoomFactor = 0.1;
+      if (event.deltaY < 0) {
+        this.zoomIn(zoomFactor);
+      } else {
+        this.zoomOut(zoomFactor);
+      }
+    }
   }
 
   // === SPREADSHEET FORM METHODS ===
   addItem(): void {
     this.items.push({
-      itemName: 'Yeni Ürün',
+      itemName: 'KDV Satırı',
       quantity: 1,
       unitPrice: 0,
       totalPrice: 0,
@@ -136,8 +430,13 @@ export class DashboardComponent implements OnInit {
     this.calculateTotals();
   }
 
-  onItemChange(item: ReceiptItem): void {
-    item.totalPrice = Number((item.quantity * item.unitPrice).toFixed(2));
+  onItemChange(item: ReceiptItem, field: 'taxRate' | 'unitPrice' | 'totalPrice'): void {
+    if (field === 'unitPrice' || field === 'taxRate') {
+      const taxAmount = item.unitPrice * (item.taxRate / 100);
+      item.totalPrice = Number((item.unitPrice + taxAmount).toFixed(2));
+    } else if (field === 'totalPrice') {
+      item.unitPrice = Number((item.totalPrice / (1 + item.taxRate / 100)).toFixed(2));
+    }
     this.calculateTotals();
   }
 
@@ -146,7 +445,7 @@ export class DashboardComponent implements OnInit {
     let tax = 0;
     this.items.forEach(item => {
       total += item.totalPrice;
-      const taxPart = item.totalPrice * (item.taxRate / (100 + item.taxRate));
+      const taxPart = item.totalPrice - item.unitPrice;
       tax += taxPart;
     });
     this.totalAmount = Number(total.toFixed(2));
@@ -154,6 +453,7 @@ export class DashboardComponent implements OnInit {
   }
 
   clearForm(): void {
+    this.isInspectMode = false;
     this.receiptId = null;
     this.merchantName = '';
     this.vknTckn = '';
@@ -162,8 +462,54 @@ export class DashboardComponent implements OnInit {
     this.totalAmount = 0;
     this.taxAmount = 0;
     this.imagePath = null;
-    this.items = [];
+    this.items = [{
+      itemName: 'KDV Satırı',
+      quantity: 1,
+      unitPrice: 0,
+      totalPrice: 0,
+      taxRate: 20
+    }];
+    this.isPdf = false;
+    this.safePdfUrl = null;
+    this.pdfDocument = null;
+    this.pdfCurrentPage = 1;
+    this.pdfTotalPages = 0;
     this.resetInput();
+    this.cdr.detectChanges(); // Temizlendikten sonra arayüzü zorla yenile
+  }
+
+  onReceiptSaved(): void {
+    if (this.isPdf && this.pdfDocument) {
+      // PDF modundaysak sadece orta paneldeki form verilerini sıfırlayalım, PDF belgesini koruyalım
+      this.receiptId = null;
+      this.isInspectMode = false;
+      this.merchantName = '';
+      this.vknTckn = '';
+      this.receiptDate = new Date().toISOString().substring(0, 10);
+      this.fisNo = '';
+      this.totalAmount = 0;
+      this.taxAmount = 0;
+      this.items = [{
+        itemName: 'KDV Satırı',
+        quantity: 1,
+        unitPrice: 0,
+        totalPrice: 0,
+        taxRate: 20
+      }];
+      
+      if (this.pdfCurrentPage < this.pdfTotalPages) {
+        // Sonraki sayfaya otomatik geçiş yapalım, render işlemi otomatik olarak taramayı başlatacaktır
+        this.pdfCurrentPage++;
+        this.renderPdfPage();
+      } else {
+        // Tüm sayfalar bittiğinde her şeyi sıfırlayalım
+        this.resetInput();
+      }
+      this.cdr.detectChanges();
+    } else {
+      // Normal görsel ise doğrudan tüm formu temizle
+      this.clearForm();
+    }
   }
 
   saveReceipt(): void {
@@ -171,10 +517,6 @@ export class DashboardComponent implements OnInit {
       this.showStatus('Lütfen Mağaza Adını girin.', 'error');
       return;
     }
-
-    const taxRate = this.taxAmount > 0 && this.totalAmount > this.taxAmount 
-      ? Math.round((this.taxAmount / (this.totalAmount - this.taxAmount)) * 100) 
-      : 20;
 
     const payload = {
       id: this.receiptId || 0,
@@ -186,13 +528,13 @@ export class DashboardComponent implements OnInit {
       taxAmount: this.taxAmount,
       imagePath: this.imagePath,
       createdBy: localStorage.getItem('username') || 'default',
-      items: [{
-        itemName: 'Genel Gider',
-        quantity: 1,
-        unitPrice: this.totalAmount,
-        totalPrice: this.totalAmount,
-        taxRate: taxRate
-      }]
+      items: this.items.map(i => ({
+        itemName: i.itemName,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        totalPrice: i.totalPrice,
+        taxRate: i.taxRate
+      }))
     };
 
     this.showStatus('Kaydediliyor...', 'info');
@@ -208,12 +550,13 @@ export class DashboardComponent implements OnInit {
         this.cdr.detectChanges();
 
         setTimeout(() => {
-          this.clearForm();
+          this.onReceiptSaved();
           this.cdr.detectChanges();
         }, 1200);
       },
       error: (err) => {
-        this.showStatus('Kayıt başarısız oldu: ' + err.message, 'error');
+        const errorMsg = err.error?.error || err.error?.message || err.message;
+        this.showStatus('Kayıt başarısız oldu: ' + errorMsg, 'error', 8000);
         this.cdr.detectChanges();
       }
     });
@@ -232,8 +575,7 @@ export class DashboardComponent implements OnInit {
   fetchReceiptsList(): void {
     this.loadingArchive = true;
     this.cdr.detectChanges();
-    const currentUsername = localStorage.getItem('username') || '';
-    this.apiService.getReceipts(currentUsername).subscribe({
+    this.apiService.getReceipts().subscribe({
       next: (data) => {
         this.receiptsList = data;
         this.filterReceipts();
@@ -268,51 +610,129 @@ export class DashboardComponent implements OnInit {
   }
 
   loadReceiptForEdit(id: number): void {
+    this.isInspectMode = false;
     this.showStatus('Fatura bilgileri forma yükleniyor...', 'info');
     this.cdr.detectChanges();
     this.apiService.getReceiptDetails(id).subscribe({
       next: (data) => {
+        this.resetZoom();
         this.receiptId = data.id;
         this.merchantName = data.merchantName;
         this.vknTckn = data.vknTckn || '';
         this.receiptDate = data.receiptDate;
-        this.fisNo = data.fisNo || '';
+        this.fisNo = data.fis_no || '';
         this.totalAmount = data.totalAmount;
         this.taxAmount = data.taxAmount;
         this.imagePath = data.imagePath;
 
-        this.items = [];
+        if (data.items && data.items.length > 0) {
+          this.items = data.items.map((i: any) => ({
+            itemName: i.itemName || 'KDV Satırı',
+            quantity: i.quantity || 1,
+            unitPrice: i.unitPrice || 0,
+            totalPrice: i.totalPrice || 0,
+            taxRate: i.taxRate || i.tax_rate || 20
+          }));
+        } else {
+          const fallbackMatrah = Number((this.totalAmount - this.taxAmount).toFixed(2));
+          this.items = [{
+            itemName: 'KDV Satırı',
+            quantity: 1,
+            unitPrice: fallbackMatrah,
+            totalPrice: this.totalAmount,
+            taxRate: 20
+          }];
+        }
 
         if (data.imagePath) {
           this.previewUrl = `http://localhost:5000/${data.imagePath}`;
+          this.isPdf = data.imagePath.toLowerCase().endsWith('.pdf');
+          this.safePdfUrl = null;
+          this.pdfDocument = null;
+          this.pdfCurrentPage = 1;
+          this.pdfTotalPages = 0;
           this.showPreview = true;
+
+          if (this.isPdf) {
+            fetch(this.previewUrl)
+              .then(res => res.arrayBuffer())
+              .then(arrayBuffer => {
+                const pdfjsLib = (window as any).pdfjsLib;
+                if (pdfjsLib) {
+                  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
+                  pdfjsLib.getDocument({ data: arrayBuffer }).promise.then((pdf: any) => {
+                    this.pdfDocument = pdf;
+                    this.pdfTotalPages = pdf.numPages;
+                    this.pdfCurrentPage = 1;
+                    // Render page without auto-scanning
+                    this.pdfDocument.getPage(this.pdfCurrentPage).then((page: any) => {
+                      const viewport = page.getViewport({ scale: 2.0 });
+                      const canvas = document.createElement('canvas');
+                      canvas.width = viewport.width;
+                      canvas.height = viewport.height;
+                      const context = canvas.getContext('2d');
+                      page.render({ canvasContext: context, viewport: viewport }).promise.then(() => {
+                        this.previewUrl = canvas.toDataURL('image/jpeg', 0.90);
+                        canvas.toBlob((blob) => {
+                          if (blob) {
+                            this.selectedFile = new File([blob], `pdf_page_${this.pdfCurrentPage}.jpg`, { type: 'image/jpeg' });
+                          }
+                          this.cdr.detectChanges();
+                        }, 'image/jpeg', 0.90);
+                      });
+                    });
+                  });
+                } else {
+                  this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.previewUrl!);
+                }
+              })
+              .catch(() => {
+                this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(this.previewUrl!);
+              });
+          }
         } else {
           this.previewUrl = null;
+          this.isPdf = false;
+          this.safePdfUrl = null;
+          this.pdfDocument = null;
+          this.pdfCurrentPage = 1;
+          this.pdfTotalPages = 0;
           this.showPreview = false;
         }
         
-        this.showStatus('Fatura düzenleme moduna alındı.', 'success');
+        this.showStatus('Fatura düzenleme moduna alındı.', 'success', 1500);
         this.cdr.detectChanges();
-        setTimeout(() => {
-          this.clearStatus();
-          this.cdr.detectChanges();
-        }, 1500);
       },
       error: (err) => {
-        this.showStatus('Veri okuma hatası: ' + err.message, 'error');
+        const errorMsg = err.error?.error || err.error?.message || err.message;
+        this.showStatus('Veri okuma hatası: ' + errorMsg, 'error', 5000);
         this.cdr.detectChanges();
       }
     });
   }
 
-  showStatus(msg: string, type: 'success' | 'info' | 'error'): void {
+
+
+  showStatus(msg: string, type: 'success' | 'info' | 'error', durationMs: number = 0): void {
+    if (this.statusTimeoutId) {
+      clearTimeout(this.statusTimeoutId);
+      this.statusTimeoutId = null;
+    }
     this.statusMessage = msg;
     this.statusType = type;
+    this.cdr.detectChanges(); // Mesaj değiştiğinde arayüzü anında yenile
+
+    if (durationMs > 0) {
+      this.statusTimeoutId = setTimeout(() => {
+        this.clearStatus();
+      }, durationMs);
+    }
   }
 
   clearStatus(): void {
     this.statusMessage = '';
     this.statusType = null;
+    this.cdr.detectChanges(); // Durum temizlendiğinde arayüzü yenile
   }
 
   private formatOcrDate(dateStr: string): string {
@@ -357,5 +777,39 @@ export class DashboardComponent implements OnInit {
 
     // Parse edilemezse bugünün tarihini yyyy-MM-dd formatında dön
     return new Date().toISOString().substring(0, 10);
+  }
+
+  loadReceiptForInspect(id: number): void {
+    this.loadReceiptForEdit(id);
+    this.isInspectMode = true;
+    this.cdr.detectChanges();
+  }
+
+  cancelInspect(): void {
+    this.isInspectMode = false;
+    this.clearForm();
+  }
+
+  deleteReceipt(id: number): void {
+    const confirmDelete = confirm('Bu faturayı silmek istediğinize emin misiniz?');
+    if (!confirmDelete) return;
+
+    this.showStatus('Fatura siliniyor...', 'info');
+    const username = this.currentUsername || 'admin';
+    this.apiService.deleteReceipt(id, username).subscribe({
+      next: (res) => {
+        this.showStatus('Fatura başarıyla silindi.', 'success', 4000);
+        if (this.receiptId === id) {
+          this.clearForm();
+        }
+        this.fetchReceiptsList();
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        const errorMsg = err.error?.error || err.error?.message || err.message;
+        this.showStatus('Silme işlemi başarısız oldu: ' + errorMsg, 'error', 5000);
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

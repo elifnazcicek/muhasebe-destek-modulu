@@ -11,8 +11,11 @@ namespace ReceiptOCR.API.Services
         public string FirmaAdi { get; set; } = string.Empty;
         public string? FisNo { get; set; }
         public string? VknTckn { get; set; }
+        public int KdvOrani { get; set; }
+        public decimal Matrah { get; set; }
         public decimal KdvTutari { get; set; }
         public decimal ToplamTutar { get; set; }
+        public decimal FisinGenelToplami { get; set; }
         public string KaydedenKullanici { get; set; } = string.Empty;
         public DateTime Tarih { get; set; }
         public string Action { get; set; } = "ADD"; // "ADD" or "UPDATE"
@@ -51,8 +54,11 @@ namespace ReceiptOCR.API.Services
                 FirmaAdi = expense.FirmaAdi,
                 FisNo = expense.FisNo,
                 VknTckn = expense.VknTckn,
+                KdvOrani = expense.KdvOrani,
+                Matrah = expense.Matrah,
                 KdvTutari = expense.KdvTutari,
                 ToplamTutar = expense.ToplamTutar,
+                FisinGenelToplami = expense.FisinGenelToplami,
                 KaydedenKullanici = expense.KaydedenKullanici,
                 Tarih = expense.Tarih,
                 Action = action

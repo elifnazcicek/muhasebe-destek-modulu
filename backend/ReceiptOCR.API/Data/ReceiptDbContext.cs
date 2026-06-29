@@ -32,6 +32,8 @@ namespace ReceiptOCR.API.Data
                 entity.HasKey(e => e.Id);
             });
 
+
+
             modelBuilder.Entity<SystemLog>(entity =>
             {
                 entity.ToTable("SystemLogs");

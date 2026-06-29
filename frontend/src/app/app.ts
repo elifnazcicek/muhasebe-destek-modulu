@@ -17,6 +17,10 @@ export class App {
     return localStorage.getItem('isLoggedIn') === 'true';
   }
 
+  getUsername(): string {
+    return localStorage.getItem('username') || '';
+  }
+
   logout(): void {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('username');

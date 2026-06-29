@@ -20,6 +20,26 @@
     box-shadow: var(--shadow-sm);
 }
 
+.header-actions {
+    display: flex;
+    align-items: center;
+}
+
+.user-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: #f8fafc; /* Slate 50 */
+    border: 1px solid var(--panel-border);
+    border-radius: 20px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    margin-right: 12px;
+    box-shadow: var(--shadow-sm);
+}
+
 .header-logo {
     display: flex;
     align-items: center;

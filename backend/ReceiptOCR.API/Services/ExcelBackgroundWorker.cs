@@ -104,22 +104,42 @@ namespace ReceiptOCR.API.Services
             using var workbook = existsAndValid ? new XLWorkbook(excelPath) : new XLWorkbook();
             var worksheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "Masraflar") ?? workbook.Worksheets.Add("Masraflar");
 
-            if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Tarih")
+            if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Tarih" || worksheet.Cell(1, 9).Value.ToString() != "Fişin Genel Toplamı")
             {
                 worksheet.Cell(1, 1).Value = "Tarih";
                 worksheet.Cell(1, 2).Value = "Firma Adi";
                 worksheet.Cell(1, 3).Value = "Fis No";
                 worksheet.Cell(1, 4).Value = "Vkn Tckn";
-                worksheet.Cell(1, 5).Value = "Kdv Tutari";
-                worksheet.Cell(1, 6).Value = "Toplam Tutar";
-                worksheet.Cell(1, 7).Value = "Kaydeden Kullanici";
+                worksheet.Cell(1, 5).Value = "KDV Oranı";
+                worksheet.Cell(1, 6).Value = "Kdv Tutari";
+                worksheet.Cell(1, 7).Value = "Toplam Tutar";
+                worksheet.Cell(1, 8).Value = "Matrah";
+                worksheet.Cell(1, 9).Value = "Fişin Genel Toplamı";
+                worksheet.Cell(1, 10).Value = "Kaydeden Kullanici";
 
                 var headerRow = worksheet.Row(1);
                 headerRow.Style.Font.Bold = true;
                 headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
             }
 
-            if (item.Action == "UPDATE")
+            if (item.Action == "DELETE")
+            {
+                int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+                for (int r = lastRowNumber; r >= 2; r--)
+                {
+                    var cellFirma = worksheet.Cell(r, 2).Value.ToString();
+                    var cellFisNo = worksheet.Cell(r, 3).Value.ToString();
+                    var cellKdvOrani = worksheet.Cell(r, 5).Value.ToString().Replace("%", "").Trim();
+                    
+                    if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo && cellKdvOrani == item.KdvOrani.ToString()) ||
+                        (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellKdvOrani == item.KdvOrani.ToString()))
+                    {
+                        worksheet.Row(r).Delete();
+                        _logger.LogInformation("Excel satiri silindi: Satir {Row}", r);
+                    }
+                }
+            }
+            else if (item.Action == "UPDATE")
             {
                 bool rowFound = false;
                 int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
@@ -127,20 +147,26 @@ namespace ReceiptOCR.API.Services
                 {
                     var cellFirma = worksheet.Cell(r, 2).Value.ToString();
                     var cellFisNo = worksheet.Cell(r, 3).Value.ToString();
+                    var cellKdvOrani = worksheet.Cell(r, 5).Value.ToString().Replace("%", "").Trim();
                     
-                    if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo) ||
-                        (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd")))
+                    if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo && cellKdvOrani == item.KdvOrani.ToString()) ||
+                        (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellKdvOrani == item.KdvOrani.ToString()))
                     {
                         worksheet.Cell(r, 1).Value = item.Tarih.ToString("yyyy-MM-dd");
                         worksheet.Cell(r, 2).Value = item.FirmaAdi;
                         worksheet.Cell(r, 3).Value = item.FisNo ?? "";
                         worksheet.Cell(r, 4).Value = item.VknTckn ?? "";
-                        worksheet.Cell(r, 5).Value = item.KdvTutari;
-                        worksheet.Cell(r, 6).Value = item.ToplamTutar;
-                        worksheet.Cell(r, 7).Value = item.KaydedenKullanici;
+                        worksheet.Cell(r, 5).Value = item.KdvOrani + "%";
+                        worksheet.Cell(r, 6).Value = item.KdvTutari;
+                        worksheet.Cell(r, 7).Value = item.ToplamTutar;
+                        worksheet.Cell(r, 8).Value = item.Matrah;
+                        worksheet.Cell(r, 9).Value = item.FisinGenelToplami;
+                        worksheet.Cell(r, 10).Value = item.KaydedenKullanici;
 
-                        worksheet.Cell(r, 5).Style.NumberFormat.Format = "0.00";
                         worksheet.Cell(r, 6).Style.NumberFormat.Format = "0.00";
+                        worksheet.Cell(r, 7).Style.NumberFormat.Format = "0.00";
+                        worksheet.Cell(r, 8).Style.NumberFormat.Format = "0.00";
+                        worksheet.Cell(r, 9).Style.NumberFormat.Format = "0.00";
                         rowFound = true;
                         _logger.LogInformation("Excel satiri guncellendi: Satir {Row}", r);
                         break;
@@ -170,12 +196,17 @@ namespace ReceiptOCR.API.Services
             worksheet.Cell(newRow, 2).Value = item.FirmaAdi;
             worksheet.Cell(newRow, 3).Value = item.FisNo ?? "";
             worksheet.Cell(newRow, 4).Value = item.VknTckn ?? "";
-            worksheet.Cell(newRow, 5).Value = item.KdvTutari;
-            worksheet.Cell(newRow, 6).Value = item.ToplamTutar;
-            worksheet.Cell(newRow, 7).Value = item.KaydedenKullanici;
+            worksheet.Cell(newRow, 5).Value = item.KdvOrani + "%";
+            worksheet.Cell(newRow, 6).Value = item.KdvTutari;
+            worksheet.Cell(newRow, 7).Value = item.ToplamTutar;
+            worksheet.Cell(newRow, 8).Value = item.Matrah;
+            worksheet.Cell(newRow, 9).Value = item.FisinGenelToplami;
+            worksheet.Cell(newRow, 10).Value = item.KaydedenKullanici;
 
-            worksheet.Cell(newRow, 5).Style.NumberFormat.Format = "0.00";
             worksheet.Cell(newRow, 6).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 7).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 8).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 9).Style.NumberFormat.Format = "0.00";
             _logger.LogInformation("Excel'e yeni satir eklendi: Satir {Row}", newRow);
         }
 

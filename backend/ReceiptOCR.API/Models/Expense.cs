@@ -9,8 +9,11 @@ namespace ReceiptOCR.API.Models
         public string FirmaAdi { get; set; } = string.Empty;
         public string? FisNo { get; set; }
         public string? VknTckn { get; set; }
+        public int KdvOrani { get; set; }
+        public decimal Matrah { get; set; }
         public decimal KdvTutari { get; set; }
         public decimal ToplamTutar { get; set; }
+        public decimal FisinGenelToplami { get; set; }
         public string KaydedenKullanici { get; set; } = string.Empty;
         public DateTime CreatedDate { get; set; } = DateTime.Now;
     }

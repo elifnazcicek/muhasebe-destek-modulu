@@ -28,22 +28,18 @@ namespace ReceiptOCR.API.Controllers
             {
                 var geminiKeySetting = await _context.Settings.FindAsync("GeminiApiKey");
                 var excelPathSetting = await _context.Settings.FindAsync("ExcelPath");
-                var vatRatesSetting = await _context.Settings.FindAsync("DefaultVatRates");
                 var logRetentionSetting = await _context.Settings.FindAsync("LogRetentionDays");
 
                 var geminiKey = geminiKeySetting?.Value ?? "";
                 var excelPath = excelPathSetting?.Value ?? @"C:\Muhasebe\Masraflar.xlsx";
-                var vatRatesStr = vatRatesSetting?.Value ?? "20,10,1";
                 var logDaysStr = logRetentionSetting?.Value ?? "365";
 
-                var vatRates = vatRatesStr.Split(',').Select(int.Parse).ToList();
                 int logDays = int.TryParse(logDaysStr, out var parsedDays) ? parsedDays : 365;
 
                 var settings = new SystemSettings
                 {
                     GeminiApiKey = geminiKey,
                     ExcelExportPath = excelPath,
-                    DefaultVatRates = vatRates,
                     LogRetentionDays = logDays
                 };
 
@@ -80,10 +76,6 @@ namespace ReceiptOCR.API.Controllers
                 var excelPath = await _context.Settings.FindAsync("ExcelPath") ?? new Setting { Key = "ExcelPath" };
                 excelPath.Value = newSettings.ExcelExportPath;
                 _context.Settings.Update(excelPath);
-
-                var vatRates = await _context.Settings.FindAsync("DefaultVatRates") ?? new Setting { Key = "DefaultVatRates" };
-                vatRates.Value = string.Join(",", newSettings.DefaultVatRates);
-                _context.Settings.Update(vatRates);
 
                 var logDays = await _context.Settings.FindAsync("LogRetentionDays") ?? new Setting { Key = "LogRetentionDays" };
                 logDays.Value = newSettings.LogRetentionDays.ToString();
