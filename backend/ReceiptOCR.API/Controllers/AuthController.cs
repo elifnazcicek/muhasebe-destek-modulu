@@ -296,10 +296,9 @@ namespace ReceiptOCR.API.Controllers
             var passwordReset = new PasswordReset
             {
                 Username = user.Username,
-                Code = code,
+                VerificationCode = code,
                 ExpiryTime = DateTime.Now.AddMinutes(10),
-                IsUsed = false,
-                CreatedDate = DateTime.Now
+                IsUsed = false
             };
 
             _context.PasswordResets.Add(passwordReset);
@@ -347,7 +346,7 @@ namespace ReceiptOCR.API.Controllers
                 return BadRequest(new { success = false, error = "Kullanıcı bulunamadı." });
 
             var resetRecord = await _context.PasswordResets
-                .FirstOrDefaultAsync(pr => pr.Username.ToLower() == request.Username.ToLower() && pr.Code == request.Code && !pr.IsUsed);
+                .FirstOrDefaultAsync(pr => pr.Username.ToLower() == request.Username.ToLower() && pr.VerificationCode == request.Code && !pr.IsUsed);
 
             if (resetRecord == null)
                 return BadRequest(new { success = false, error = "Geçersiz doğrulama kodu." });

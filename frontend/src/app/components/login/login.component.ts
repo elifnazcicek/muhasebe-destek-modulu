@@ -231,10 +231,12 @@ export class LoginComponent implements OnInit {
         } else {
           this.errorMessage = res.error || 'Doğrulama kodu gönderilemedi.';
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.loading = false;
         this.errorMessage = err.error?.error || 'Sunucuyla bağlantı kurulamadı.';
+        this.cdr.detectChanges();
       }
     });
   }
@@ -271,10 +273,12 @@ export class LoginComponent implements OnInit {
         } else {
           this.errorMessage = res.error || 'Şifre sıfırlanamadı.';
         }
+        this.cdr.detectChanges();
       },
       error: (err) => {
         this.loading = false;
         this.errorMessage = err.error?.error || 'Sunucuyla bağlantı kurulamadı.';
+        this.cdr.detectChanges();
       }
     });
   }
