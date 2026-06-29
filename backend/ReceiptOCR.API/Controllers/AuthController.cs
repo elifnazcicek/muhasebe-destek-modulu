@@ -79,7 +79,7 @@ namespace ReceiptOCR.API.Controllers
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == request.Username.ToLower()))
                 return BadRequest(new AuthResponse { Success = false, Error = "Bu kullanıcı adı zaten alınmış." });
 
-            if (await _context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.ToLower()))
+            if (await _context.Users.AnyAsync(u => u.Email != null && u.Email.ToLower() == request.Email.ToLower()))
                 return BadRequest(new AuthResponse { Success = false, Error = "Bu e-posta adresi zaten kullanımda." });
 
             var user = new User
