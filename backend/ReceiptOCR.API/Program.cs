@@ -195,6 +195,18 @@ try
     app.UseSerilogRequestLogging();
 
     app.UseCors();
+
+    // processed klasörünü statik dosya olarak servis et
+    var processedPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "processed");
+    if (!Directory.Exists(processedPath))
+    {
+        Directory.CreateDirectory(processedPath);
+    }
+    app.UseStaticFiles(new StaticFileOptions
+    {
+        FileProvider = new Microsoft.Extensions.FileProviders.PhysicalFileProvider(processedPath),
+        RequestPath = "/processed"
+    });
     
     // 4. JWT Yetkilendirme Middleware'leri
     app.UseAuthentication();

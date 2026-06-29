@@ -15,6 +15,7 @@ namespace ReceiptOCR.API.Models
         public decimal ToplamTutar { get; set; }
         public decimal FisinGenelToplami { get; set; }
         public string KaydedenKullanici { get; set; } = string.Empty;
+        public string? ImagePath { get; set; }
         public DateTime CreatedDate { get; set; } = DateTime.Now;
     }
 }

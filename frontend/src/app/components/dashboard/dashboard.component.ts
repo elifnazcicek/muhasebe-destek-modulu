@@ -169,7 +169,7 @@ export class DashboardComponent implements OnInit {
       next: (res) => {
         this.isScanning = false;
         setTimeout(() => {
-          const data = res.data; 
+          const data = res.data.data; 
           this.merchantName = data.firma_adi || '';
           this.vknTckn = data.vkn_tckn || '';
           this.receiptDate = this.formatOcrDate(data.tarih);
@@ -198,7 +198,7 @@ export class DashboardComponent implements OnInit {
           }
 
           this.calculateTotals();
-          this.imagePath = null;
+          this.imagePath = res.data.imagePath || null;
 
           this.showPreview = true;
           this.showStatus('OCR tamamlandı!', 'success', 6000);
@@ -457,6 +457,7 @@ export class DashboardComponent implements OnInit {
     this.fisNo = '';
     this.totalAmount = 0;
     this.taxAmount = 0;
+    this.imagePath = null;
     this.items = [{
       itemName: 'KDV Satırı',
       quantity: 1,

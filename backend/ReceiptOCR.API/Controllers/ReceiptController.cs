@@ -166,7 +166,13 @@ public class ReceiptController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail("Gemini API'den sonuç alınamadı."));
             }
 
-            return Ok(ApiResponse<ExtractedReceiptData>.Ok(result, "Fiş başarıyla okundu."));
+            var response = new
+            {
+                data = result,
+                imagePath = preprocessResult.ProcessedFileName
+            };
+
+            return Ok(ApiResponse<object>.Ok(response, "Fiş başarıyla okundu."));
         }
         catch (Exception ex)
         {
@@ -228,6 +234,7 @@ public class ReceiptController : ControllerBase
                     ToplamTutar = item.TotalPrice,
                     FisinGenelToplami = request.TotalAmount,
                     KaydedenKullanici = request.CreatedBy,
+                    ImagePath = request.ImagePath,
                     CreatedDate = DateTime.Now
                 };
 
@@ -371,7 +378,7 @@ public class ReceiptController : ControllerBase
                 totalAmount = expense.FisinGenelToplami > 0 ? expense.FisinGenelToplami : relatedExpenses.Sum(e => e.ToplamTutar),
                 taxAmount = relatedExpenses.Sum(e => e.KdvTutari),
                 fisinGenelToplami = expense.FisinGenelToplami,
-                imagePath = (string?)null,
+                imagePath = expense.ImagePath,
                 createdBy = expense.KaydedenKullanici,
                 items = relatedExpenses.Select(e => new
                 {
@@ -453,6 +460,7 @@ public class ReceiptController : ControllerBase
             expense.KdvTutari = mainItem.TotalPrice - mainItem.UnitPrice;
             expense.ToplamTutar = mainItem.TotalPrice;
             expense.FisinGenelToplami = request.TotalAmount;
+            expense.ImagePath = request.ImagePath;
             // expense.KaydedenKullanici = request.CreatedBy; // İlk kaydeden kullanıcıyı korumak için güncellenmiyor
 
             if (DateTime.TryParse(request.ReceiptDate, out var date))
@@ -514,6 +522,7 @@ public class ReceiptController : ControllerBase
                         ToplamTutar = item.TotalPrice,
                         FisinGenelToplami = request.TotalAmount,
                         KaydedenKullanici = expense.KaydedenKullanici, // İlk kaydeden kullanıcıyı koruyoruz
+                        ImagePath = request.ImagePath,
                         CreatedDate = DateTime.Now
                     };
 
