@@ -441,7 +441,7 @@ public class ReceiptController : ControllerBase
             expense.KdvTutari = mainItem.TotalPrice - mainItem.UnitPrice;
             expense.ToplamTutar = mainItem.TotalPrice;
             expense.FisinGenelToplami = request.TotalAmount;
-            expense.KaydedenKullanici = request.CreatedBy;
+            // expense.KaydedenKullanici = request.CreatedBy; // İlk kaydeden kullanıcıyı korumak için güncellenmiyor
 
             if (DateTime.TryParse(request.ReceiptDate, out var date))
             {
@@ -480,7 +480,7 @@ public class ReceiptController : ControllerBase
                         KdvTutari = item.TotalPrice - item.UnitPrice,
                         ToplamTutar = item.TotalPrice,
                         FisinGenelToplami = request.TotalAmount,
-                        KaydedenKullanici = request.CreatedBy,
+                        KaydedenKullanici = expense.KaydedenKullanici, // İlk kaydeden kullanıcıyı koruyoruz
                         CreatedDate = DateTime.Now
                     };
 
