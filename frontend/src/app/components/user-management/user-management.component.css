@@ -181,3 +181,44 @@
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
+
+.btn-outline-role {
+    background: transparent !important;
+    border: 2px solid var(--color-primary, #10b981) !important;
+    color: var(--color-primary, #10b981) !important;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+.btn-outline-role:hover {
+    background: rgba(16, 185, 129, 0.1) !important;
+}
+
+.btn-outline-freeze {
+    background: transparent !important;
+    border: 2px solid #ef4444 !important;
+    color: #ef4444 !important;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+.btn-outline-freeze:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.1) !important;
+}
+
+.btn-outline-activate {
+    background: transparent !important;
+    border: 2px solid #10b981 !important;
+    color: #10b981 !important;
+    font-weight: 600;
+    transition: all 0.2s ease-in-out;
+}
+.btn-outline-activate:hover:not(:disabled) {
+    background: rgba(16, 185, 129, 0.1) !important;
+}
+
+.btn-outline-freeze:disabled,
+.btn-outline-activate:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #64748b !important;
+    color: #64748b !important;
+}

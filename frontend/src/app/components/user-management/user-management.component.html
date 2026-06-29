@@ -49,13 +49,13 @@
               </td>
               <td style="text-align: center;">
                 <div class="action-buttons-group">
-                  <button type="button" class="btn btn-secondary btn-xs" (click)="toggleRole(u)" title="Kullanıcının rolünü değiştirir">
+                  <button type="button" class="btn btn-xs btn-outline-role" (click)="toggleRole(u)" title="Kullanıcının rolünü değiştirir">
                     🔄 Rol
                   </button>
                   <button type="button" 
                           class="btn btn-xs" 
-                          [class.btn-danger]="u.isActive" 
-                          [class.btn-success]="!u.isActive" 
+                          [class.btn-outline-freeze]="u.isActive" 
+                          [class.btn-outline-activate]="!u.isActive" 
                           [disabled]="u.username.toLowerCase() === adminUsername.toLowerCase()"
                           (click)="toggleStatus(u)"
                           [title]="u.username.toLowerCase() === adminUsername.toLowerCase() ? 'Kendi hesabınızı donduramazsınız.' : 'Kullanıcı erişimini kapatır/açar'">
