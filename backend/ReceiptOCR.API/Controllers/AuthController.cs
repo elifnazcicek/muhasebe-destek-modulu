@@ -8,6 +8,8 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 
+using ReceiptOCR.API.Services;
+
 namespace ReceiptOCR.API.Controllers
 {
     [ApiController]
@@ -16,11 +18,13 @@ namespace ReceiptOCR.API.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly ReceiptDbContext _context;
+        private readonly IEmailService _emailService;
 
-        public AuthController(IConfiguration configuration, ReceiptDbContext context)
+        public AuthController(IConfiguration configuration, ReceiptDbContext context, IEmailService emailService)
         {
             _configuration = configuration;
             _context = context;
+            _emailService = emailService;
         }
 
         [HttpPost("login")]
@@ -260,6 +264,126 @@ namespace ReceiptOCR.API.Controllers
             var token = tokenHandler.CreateToken(tokenDescriptor);
             return tokenHandler.WriteToken(token);
         }
+
+        [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword([FromBody] ForgotPasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username))
+                return BadRequest(new { success = false, error = "Kullanıcı adı zorunludur." });
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username.ToLower());
+            if (user == null)
+            {
+                return BadRequest(new { success = false, error = "Kullanıcı bulunamadı." });
+            }
+
+            if (string.IsNullOrWhiteSpace(user.Email))
+            {
+                return BadRequest(new { success = false, error = "Kullanıcıya ait kayıtlı bir e-posta adresi bulunamadı. Lütfen yöneticinizle iletişime geçin." });
+            }
+
+            var random = new Random();
+            var code = random.Next(100000, 999999).ToString();
+
+            var activeResets = await _context.PasswordResets
+                .Where(pr => pr.Username.ToLower() == request.Username.ToLower() && !pr.IsUsed)
+                .ToListAsync();
+            foreach (var r in activeResets)
+            {
+                r.IsUsed = true;
+            }
+
+            var passwordReset = new PasswordReset
+            {
+                Username = user.Username,
+                Code = code,
+                ExpiryTime = DateTime.Now.AddMinutes(10),
+                IsUsed = false,
+                CreatedDate = DateTime.Now
+            };
+
+            _context.PasswordResets.Add(passwordReset);
+            await _context.SaveChangesAsync();
+
+            try
+            {
+                await _emailService.SendVerificationCodeAsync(user.Email, code);
+
+                _context.SystemLogs.Add(new SystemLog
+                {
+                    Username = user.Username,
+                    ActionType = "FORGOT_PASSWORD",
+                    Status = "SUCCESS",
+                    Details = $"Şifre sıfırlama kodu gönderildi: {MaskEmail(user.Email)}"
+                });
+                await _context.SaveChangesAsync();
+
+                return Ok(new { success = true, email = MaskEmail(user.Email), message = "Doğrulama kodu e-postanıza gönderildi." });
+            }
+            catch (Exception ex)
+            {
+                _context.ErrorLogs.Add(new ErrorLog
+                {
+                    Username = user.Username,
+                    ActionType = "FORGOT_PASSWORD",
+                    ErrorMessage = $"Şifre sıfırlama maili gönderme hatası: {ex.Message}",
+                    StackTrace = ex.StackTrace,
+                    Timestamp = DateTime.Now
+                });
+                await _context.SaveChangesAsync();
+
+                return StatusCode(500, new { success = false, error = "Doğrulama kodu e-postası gönderilemedi: " + ex.Message });
+            }
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword([FromBody] ResetPasswordRequest request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Code) || string.IsNullOrWhiteSpace(request.NewPassword))
+                return BadRequest(new { success = false, error = "Tüm alanlar zorunludur." });
+
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username.ToLower());
+            if (user == null)
+                return BadRequest(new { success = false, error = "Kullanıcı bulunamadı." });
+
+            var resetRecord = await _context.PasswordResets
+                .FirstOrDefaultAsync(pr => pr.Username.ToLower() == request.Username.ToLower() && pr.Code == request.Code && !pr.IsUsed);
+
+            if (resetRecord == null)
+                return BadRequest(new { success = false, error = "Geçersiz doğrulama kodu." });
+
+            if (resetRecord.ExpiryTime < DateTime.Now)
+                return BadRequest(new { success = false, error = "Doğrulama kodunun süresi dolmuş (10 dakika)." });
+
+            user.PasswordHash = HashPassword(request.NewPassword);
+            resetRecord.IsUsed = true;
+
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Username = user.Username,
+                ActionType = "RESET_PASSWORD",
+                Status = "SUCCESS",
+                Details = "Şifre başarıyla sıfırlandı."
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true, message = "Şifreniz başarıyla sıfırlandı. Yeni şifrenizle giriş yapabilirsiniz." });
+        }
+
+        private string MaskEmail(string email)
+        {
+            if (string.IsNullOrEmpty(email) || !email.Contains("@"))
+                return email;
+
+            var parts = email.Split('@');
+            var name = parts[0];
+            var domain = parts[1];
+
+            if (name.Length <= 2)
+                return name[0] + "***@" + domain;
+
+            return name.Substring(0, 2) + new string('*', name.Length - 2) + "@" + domain;
+        }
     }
 
     public class RegisterRequest
@@ -284,5 +408,17 @@ namespace ReceiptOCR.API.Controllers
     {
         public string AdminUsername { get; set; } = string.Empty;
         public bool IsActive { get; set; }
+    }
+
+    public class ForgotPasswordRequest
+    {
+        public string Username { get; set; } = string.Empty;
+    }
+
+    public class ResetPasswordRequest
+    {
+        public string Username { get; set; } = string.Empty;
+        public string Code { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

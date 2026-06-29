@@ -12,13 +12,19 @@ import { ApiService } from '../../services/api.service';
   styleUrls: ['./login.component.css']
 })
 export class LoginComponent implements OnInit {
-  mode: 'login' | 'register' = 'login';
+  mode: 'login' | 'register' | 'forgot' = 'login';
   
   username = '';
   password = '';
   confirmPassword = '';
   email = ''; // E-posta alanı
   rememberMe = false;
+
+  // Şifremi Unuttum Adımları
+  forgotStep = 1; // 1: Kullanıcı adı girme, 2: Kod ve yeni şifre girme
+  forgotCode = '';
+  newPassword = '';
+  maskedEmail = '';
 
   errorMessage = '';
   successMessage = '';
@@ -62,8 +68,14 @@ export class LoginComponent implements OnInit {
   onSubmit(): void {
     if (this.mode === 'login') {
       this.handleLogin();
-    } else {
+    } else if (this.mode === 'register') {
       this.handleRegister();
+    } else if (this.mode === 'forgot') {
+      if (this.forgotStep === 1) {
+        this.sendForgotCode();
+      } else {
+        this.resetPassword();
+      }
     }
   }
 
@@ -169,6 +181,100 @@ export class LoginComponent implements OnInit {
         this.loading = false;
         this.errorMessage = err.error?.error || 'Kayıt sırasında bir sunucu hatası oluştu.';
         this.cdr.detectChanges();
+      }
+    });
+  }
+
+  switchToForgot(): void {
+    this.mode = 'forgot';
+    this.forgotStep = 1;
+    this.username = '';
+    this.forgotCode = '';
+    this.newPassword = '';
+    this.maskedEmail = '';
+    this.errorMessage = '';
+    this.successMessage = '';
+  }
+
+  switchToLogin(): void {
+    this.mode = 'login';
+    this.errorMessage = '';
+    this.successMessage = '';
+    this.password = '';
+    this.confirmPassword = '';
+    this.email = '';
+    const savedRememberMe = localStorage.getItem('rememberMe') === 'true';
+    if (savedRememberMe) {
+      this.rememberMe = true;
+      this.username = localStorage.getItem('rememberedUsername') || '';
+      this.password = localStorage.getItem('rememberedPassword') || '';
+    }
+  }
+
+  sendForgotCode(): void {
+    if (!this.username.trim()) {
+      this.errorMessage = 'Lütfen kullanıcı adınızı girin.';
+      return;
+    }
+
+    this.loading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    this.apiService.forgotPassword(this.username.trim()).subscribe({
+      next: (res) => {
+        this.loading = false;
+        if (res.success) {
+          this.forgotStep = 2;
+          this.maskedEmail = res.email;
+          this.successMessage = `Doğrulama kodu ${res.email} adresine gönderildi.`;
+        } else {
+          this.errorMessage = res.error || 'Doğrulama kodu gönderilemedi.';
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMessage = err.error?.error || 'Sunucuyla bağlantı kurulamadı.';
+      }
+    });
+  }
+
+  resetPassword(): void {
+    if (!this.forgotCode.trim() || !this.newPassword.trim()) {
+      this.errorMessage = 'Lütfen tüm alanları doldurun.';
+      return;
+    }
+
+    if (this.newPassword.length < 3) {
+      this.errorMessage = 'Şifre en az 3 karakter olmalıdır.';
+      return;
+    }
+
+    this.loading = true;
+    this.errorMessage = '';
+    this.successMessage = '';
+
+    const payload = {
+      username: this.username.trim(),
+      code: this.forgotCode.trim(),
+      newPassword: this.newPassword.trim()
+    };
+
+    this.apiService.resetPassword(payload).subscribe({
+      next: (res) => {
+        this.loading = false;
+        if (res.success) {
+          this.successMessage = 'Şifreniz başarıyla sıfırlandı. Giriş ekranına yönlendiriliyorsunuz...';
+          setTimeout(() => {
+            this.switchToLogin();
+          }, 3000);
+        } else {
+          this.errorMessage = res.error || 'Şifre sıfırlanamadı.';
+        }
+      },
+      error: (err) => {
+        this.loading = false;
+        this.errorMessage = err.error?.error || 'Sunucuyla bağlantı kurulamadı.';
       }
     });
   }

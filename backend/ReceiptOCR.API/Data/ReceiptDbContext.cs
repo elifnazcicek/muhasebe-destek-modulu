@@ -14,6 +14,7 @@ namespace ReceiptOCR.API.Data
         public DbSet<SystemLog> SystemLogs { get; set; }
         public DbSet<ErrorLog> ErrorLogs { get; set; }
         public DbSet<Setting> Settings { get; set; }
+        public DbSet<PasswordReset> PasswordResets { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -50,6 +51,12 @@ namespace ReceiptOCR.API.Data
             {
                 entity.ToTable("Settings");
                 entity.HasKey(e => e.Key);
+            });
+
+            modelBuilder.Entity<PasswordReset>(entity =>
+            {
+                entity.ToTable("PasswordResets");
+                entity.HasKey(e => e.Id);
             });
         }
     }

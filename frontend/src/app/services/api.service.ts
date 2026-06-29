@@ -55,6 +55,14 @@ export class ApiService {
     return this.http.post<any>(`${this.baseUrl}/auth/register`, credentials);
   }
 
+  forgotPassword(username: string): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/auth/forgot-password`, { username });
+  }
+
+  resetPassword(payload: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/auth/reset-password`, payload);
+  }
+
   // ==========================================
   // LOG ENDPOINTS (Sistem Kayıtları)
   // ==========================================

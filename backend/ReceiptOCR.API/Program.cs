@@ -51,6 +51,9 @@ try
     builder.Services.AddSingleton<IExcelQueueService, ExcelQueueService>();
     builder.Services.AddHostedService<ExcelBackgroundWorker>();
 
+    // E-posta gönderim servisi
+    builder.Services.AddScoped<IEmailService, EmailService>();
+
     // CORS: Angular dev server (http://localhost:4200) erişimi için
     builder.Services.AddCors(options =>
     {
