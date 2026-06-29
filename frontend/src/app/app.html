@@ -8,6 +8,11 @@
         <p>Kamera Entegreli Fiş Okuma & Veritabanı Otomasyonu</p>
       </div>
     </div>
+
+    <nav class="header-nav" *ngIf="isLoggedIn()" style="display: flex; gap: 10px; margin-left: 30px; align-items: center;">
+      <a routerLink="/dashboard" routerLinkActive="active" style="color: var(--text-main); text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 6px; transition: background 0.2s; font-size: 0.9rem;">🏠 Ana Sayfa</a>
+      <a *ngIf="isAdmin()" routerLink="/users" routerLinkActive="active" style="color: var(--text-main); text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 6px; transition: background 0.2s; font-size: 0.9rem;">👥 Yetkiler</a>
+    </nav>
     
     <div class="header-actions">
       <span class="user-badge" *ngIf="getUsername()">

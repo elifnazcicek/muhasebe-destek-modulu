@@ -3,6 +3,7 @@ import { LoginComponent } from './components/login/login.component';
 import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { ArchiveComponent } from './components/archive/archive.component';
 import { LogsComponent } from './components/logs/logs.component';
+import { UserManagementComponent } from './components/user-management/user-management.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -10,4 +11,5 @@ export const routes: Routes = [
   { path: 'dashboard', component: DashboardComponent },
   { path: 'archive', component: ArchiveComponent },
   { path: 'logs', component: LogsComponent },
+  { path: 'users', component: UserManagementComponent },
 ];

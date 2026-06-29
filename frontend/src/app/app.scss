@@ -73,6 +73,16 @@
     flex-direction: column;
 }
 
+.header-nav a:hover {
+    background: rgba(0, 0, 0, 0.05);
+}
+
+.header-nav a.active {
+    background: rgba(16, 185, 129, 0.1);
+    color: var(--color-primary, #10b981) !important;
+    font-weight: 600;
+}
+
 @media (max-width: 768px) {
     .app-header {
         flex-direction: column;

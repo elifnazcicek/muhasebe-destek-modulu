@@ -1,10 +1,10 @@
 import { Component, signal } from '@angular/core';
-import { RouterOutlet, Router } from '@angular/router';
+import { RouterOutlet, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, CommonModule],
+  imports: [RouterOutlet, CommonModule, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -19,6 +19,10 @@ export class App {
 
   getUsername(): string {
     return localStorage.getItem('username') || '';
+  }
+
+  isAdmin(): boolean {
+    return localStorage.getItem('role') === 'Admin';
   }
 
   logout(): void {

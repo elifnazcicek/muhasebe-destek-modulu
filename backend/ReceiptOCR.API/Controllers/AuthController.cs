@@ -128,6 +128,100 @@ namespace ReceiptOCR.API.Controllers
             return Ok(new { success = true });
         }
 
+        [HttpGet("users")]
+        public async Task<IActionResult> GetUsers([FromQuery] string adminUsername)
+        {
+            var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == adminUsername.ToLower());
+            if (adminUser == null || adminUser.Role != "Admin")
+            {
+                return StatusCode(403, new { error = "Kullanıcı listesini görüntülemek için yönetici yetkiniz olmalıdır." });
+            }
+
+            var users = await _context.Users
+                .OrderBy(u => u.Username)
+                .Select(u => new
+                {
+                    u.Id,
+                    u.Username,
+                    u.FullName,
+                    u.Role,
+                    u.IsActive,
+                    CreatedDate = u.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss")
+                })
+                .ToListAsync();
+
+            return Ok(users);
+        }
+
+        [HttpPut("users/{id}/role")]
+        public async Task<IActionResult> UpdateRole(int id, [FromBody] UpdateRoleRequest request)
+        {
+            var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == request.AdminUsername.ToLower());
+            if (adminUser == null || adminUser.Role != "Admin")
+            {
+                return StatusCode(403, new { error = "Kullanıcı rolünü değiştirmek için yönetici yetkiniz olmalıdır." });
+            }
+
+            var userToUpdate = await _context.Users.FindAsync(id);
+            if (userToUpdate == null)
+            {
+                return NotFound(new { error = "Kullanıcı bulunamadı." });
+            }
+
+            if (request.Role != "Admin" && request.Role != "User")
+            {
+                return BadRequest(new { error = "Geçersiz rol tanımı." });
+            }
+
+            string oldRole = userToUpdate.Role;
+            userToUpdate.Role = request.Role;
+
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Username = request.AdminUsername,
+                ActionType = "UPDATE_USER_ROLE",
+                Status = "SUCCESS",
+                Details = $"Kullanıcı rolü güncellendi: {userToUpdate.Username} ({oldRole} -> {request.Role})"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
+        [HttpPut("users/{id}/status")]
+        public async Task<IActionResult> UpdateStatus(int id, [FromBody] UpdateStatusRequest request)
+        {
+            var adminUser = await _context.Users.FirstOrDefaultAsync(u => u.Username.ToLower() == request.AdminUsername.ToLower());
+            if (adminUser == null || adminUser.Role != "Admin")
+            {
+                return StatusCode(403, new { error = "Kullanıcı durumunu değiştirmek için yönetici yetkiniz olmalıdır." });
+            }
+
+            var userToUpdate = await _context.Users.FindAsync(id);
+            if (userToUpdate == null)
+            {
+                return NotFound(new { error = "Kullanıcı bulunamadı." });
+            }
+
+            if (userToUpdate.Username.ToLower() == request.AdminUsername.ToLower())
+            {
+                return BadRequest(new { error = "Kendi yöneticilik hesabınızı donduramazsınız." });
+            }
+
+            userToUpdate.IsActive = request.IsActive;
+
+            _context.SystemLogs.Add(new SystemLog
+            {
+                Username = request.AdminUsername,
+                ActionType = "UPDATE_USER_STATUS",
+                Status = "SUCCESS",
+                Details = $"Kullanıcı aktiflik durumu güncellendi: {userToUpdate.Username} (Aktif: {request.IsActive})"
+            });
+
+            await _context.SaveChangesAsync();
+            return Ok(new { success = true });
+        }
+
         private string HashPassword(string password)
         {
             using var sha256 = SHA256.Create();
@@ -173,5 +267,17 @@ namespace ReceiptOCR.API.Controllers
     public class LogoutRequest
     {
         public string Username { get; set; } = string.Empty;
+    }
+
+    public class UpdateRoleRequest
+    {
+        public string AdminUsername { get; set; } = string.Empty;
+        public string Role { get; set; } = string.Empty;
+    }
+
+    public class UpdateStatusRequest
+    {
+        public string AdminUsername { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
     }
 }

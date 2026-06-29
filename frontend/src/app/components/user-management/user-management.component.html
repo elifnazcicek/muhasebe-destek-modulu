@@ -1,0 +1,72 @@
+<div class="user-management-container">
+  <header class="management-header">
+    <div class="header-title">
+      <h1>👥 Kullanıcı Yetki Yönetimi</h1>
+      <p class="subtitle">Sisteme kayıtlı personelin rollerini (Çalışan/Yönetici) değiştirebilir ve hesaplarını dondurabilirsiniz.</p>
+    </div>
+    <button class="btn btn-secondary" (click)="goBack()">◀ Ana Sayfaya Dön</button>
+  </header>
+
+  <!-- Bildirim Şeridi -->
+  <div *ngIf="statusMessage" class="process-alert" [ngClass]="statusType" style="margin-bottom: 20px;">
+    <div class="spinner spinner-sm" *ngIf="statusType === 'info'"></div>
+    <span>{{ statusMessage }}</span>
+  </div>
+
+  <section class="table-section">
+    <div class="table-card">
+      <div class="table-header">
+        <h2>Kayıtlı Personel Listesi</h2>
+        <span class="user-count-badge">{{ users.length }} Toplam Hesap</span>
+      </div>
+
+      <div class="table-responsive">
+        <table class="user-table">
+          <thead>
+            <tr>
+              <th>Kullanıcı Adı</th>
+              <th>Ad Soyad</th>
+              <th>Kayıt Tarihi</th>
+              <th>Yetki Rolü</th>
+              <th>Hesap Durumu</th>
+              <th style="text-align: center; width: 220px;">Yetki / Durum Değiştir</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let u of users">
+              <td class="username-cell"><strong>{{ u.username }}</strong></td>
+              <td>{{ u.fullName || u.username }}</td>
+              <td class="date-cell">{{ u.createdDate }}</td>
+              <td>
+                <span class="role-badge" [class.admin]="u.role === 'Admin'">
+                  {{ u.role === 'Admin' ? '👑 Yönetici (Admin)' : '👤 Çalışan (User)' }}
+                </span>
+              </td>
+              <td>
+                <span class="status-badge" [class.active]="u.isActive" [class.inactive]="!u.isActive">
+                  {{ u.isActive ? '🟢 Aktif' : '🔴 Donduruldu' }}
+                </span>
+              </td>
+              <td style="text-align: center;">
+                <div class="action-buttons-group">
+                  <button type="button" class="btn btn-secondary btn-xs" (click)="toggleRole(u)" title="Kullanıcının rolünü değiştirir">
+                    🔄 Rol
+                  </button>
+                  <button type="button" 
+                          class="btn btn-xs" 
+                          [class.btn-danger]="u.isActive" 
+                          [class.btn-success]="!u.isActive" 
+                          [disabled]="u.username.toLowerCase() === adminUsername.toLowerCase()"
+                          (click)="toggleStatus(u)"
+                          [title]="u.username.toLowerCase() === adminUsername.toLowerCase() ? 'Kendi hesabınızı donduramazsınız.' : 'Kullanıcı erişimini kapatır/açar'">
+                    🔒 {{ u.isActive ? 'Dondur' : 'Aktifleştir' }}
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>

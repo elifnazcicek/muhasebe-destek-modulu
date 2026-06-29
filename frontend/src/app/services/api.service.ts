@@ -73,4 +73,19 @@ export class ApiService {
   getBackupContent(filename: string): Observable<string> {
     return this.http.get(`${this.baseUrl}/logs/backups/${filename}`, { responseType: 'text' });
   }
+
+  // ==========================================
+  // USER MANAGEMENT ENDPOINTS (Yönetici Yetkileri)
+  // ==========================================
+  getUsers(adminUsername: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/auth/users?adminUsername=${encodeURIComponent(adminUsername)}`);
+  }
+
+  updateUserRole(userId: number, adminUsername: string, role: string): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/auth/users/${userId}/role`, { adminUsername, role });
+  }
+
+  updateUserStatus(userId: number, adminUsername: string, isActive: boolean): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/auth/users/${userId}/status`, { adminUsername, isActive });
+  }
 }
