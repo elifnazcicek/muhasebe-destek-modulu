@@ -345,6 +345,21 @@ public class ReceiptController : ControllerBase
                 return NotFound(ApiResponse<object>.Fail("Masraf kaydı bulunamadı."));
             }
 
+            // Fiş ile ilişkili olan (aynı anda kaydedilen) tüm KDV satırlarını bulalım
+            var relatedExpenses = await _context.Expenses
+                .Where(e => e.FirmaAdi == expense.FirmaAdi 
+                         && e.FisNo == expense.FisNo 
+                         && e.Tarih == expense.Tarih 
+                         && e.KaydedenKullanici == expense.KaydedenKullanici
+                         && e.FisinGenelToplami == expense.FisinGenelToplami)
+                .ToListAsync();
+
+            // Aynı saniyeler içinde kaydedilmiş olanları filtreleyelim (5 saniye tolerans)
+            relatedExpenses = relatedExpenses
+                .Where(e => Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
+                .OrderBy(e => e.Id)
+                .ToList();
+
             var response = new
             {
                 id = expense.Id,
@@ -353,22 +368,19 @@ public class ReceiptController : ControllerBase
                 createdAt = expense.CreatedDate.ToString("yyyy-MM-dd HH:mm:ss"),
                 fisNo = expense.FisNo,
                 vknTckn = expense.VknTckn,
-                totalAmount = expense.ToplamTutar,
-                taxAmount = expense.KdvTutari,
+                totalAmount = expense.FisinGenelToplami > 0 ? expense.FisinGenelToplami : relatedExpenses.Sum(e => e.ToplamTutar),
+                taxAmount = relatedExpenses.Sum(e => e.KdvTutari),
                 fisinGenelToplami = expense.FisinGenelToplami,
                 imagePath = (string?)null,
                 createdBy = expense.KaydedenKullanici,
-                items = new[]
+                items = relatedExpenses.Select(e => new
                 {
-                    new
-                    {
-                        itemName = "KDV Detayı",
-                        quantity = 1,
-                        unitPrice = expense.Matrah,
-                        totalPrice = expense.ToplamTutar,
-                        taxRate = expense.KdvOrani
-                    }
-                }
+                    itemName = "KDV Detayı",
+                    quantity = 1,
+                    unitPrice = e.Matrah,
+                    totalPrice = e.ToplamTutar,
+                    taxRate = e.KdvOrani
+                }).ToArray()
             };
 
             return Ok(response);
@@ -464,6 +476,27 @@ public class ReceiptController : ControllerBase
             // Excel (.xlsx) dosyasına güncelleme işlemini kuyruğa ekle
             _excelQueueService.QueueWrite(expense, "UPDATE");
 
+            // Önceki ilişkili diğer KDV satırlarını bulup silelim (mükerrerliği önlemek için)
+            var oldRelated = await _context.Expenses
+                .Where(e => e.FirmaAdi == expense.FirmaAdi 
+                         && e.FisNo == expense.FisNo 
+                         && e.Tarih == expense.Tarih 
+                         && e.KaydedenKullanici == expense.KaydedenKullanici
+                         && e.FisinGenelToplami == expense.FisinGenelToplami
+                         && e.Id != expense.Id)
+                .ToListAsync();
+
+            oldRelated = oldRelated
+                .Where(e => Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
+                .ToList();
+
+            foreach (var rel in oldRelated)
+            {
+                _context.Expenses.Remove(rel);
+                _excelQueueService.QueueWrite(rel, "DELETE");
+            }
+            await _context.SaveChangesAsync();
+
             // Eğer birden fazla kalem varsa, diğerlerini yeni satır olarak ekle
             if (itemsToProcess.Count > 1)
             {
@@ -529,7 +562,24 @@ public class ReceiptController : ControllerBase
                 return NotFound(ApiResponse<object>.Fail("Masraf kaydı bulunamadı."));
             }
 
-            _context.Expenses.Remove(expense);
+            // Fiş ile ilişkili tüm KDV satırlarını bulup silelim
+            var relatedExpenses = await _context.Expenses
+                .Where(e => e.FirmaAdi == expense.FirmaAdi 
+                         && e.FisNo == expense.FisNo 
+                         && e.Tarih == expense.Tarih 
+                         && e.KaydedenKullanici == expense.KaydedenKullanici
+                         && e.FisinGenelToplami == expense.FisinGenelToplami)
+                .ToListAsync();
+
+            relatedExpenses = relatedExpenses
+                .Where(e => Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
+                .ToList();
+
+            foreach (var exp in relatedExpenses)
+            {
+                _context.Expenses.Remove(exp);
+                _excelQueueService.QueueWrite(exp, "DELETE");
+            }
 
             // Log ekle
             _context.SystemLogs.Add(new SystemLog
@@ -537,13 +587,10 @@ public class ReceiptController : ControllerBase
                 Username = username,
                 ActionType = "Delete_Receipt",
                 Status = "SUCCESS",
-                Details = $"Fiş silindi: ID {id} - {expense.FirmaAdi} - Tutar: {expense.ToplamTutar}"
+                Details = $"Fiş ve ilişkili {relatedExpenses.Count} KDV satırı silindi: ID {id} - {expense.FirmaAdi} - Genel Toplam: {expense.FisinGenelToplami}"
             });
 
             await _context.SaveChangesAsync();
-
-            // Excel dosyasından silmek için kuyruğa ekle
-            _excelQueueService.QueueWrite(expense, "DELETE");
 
             return Ok(ApiResponse<object>.Ok(null, "Fatura başarıyla silindi."));
         }

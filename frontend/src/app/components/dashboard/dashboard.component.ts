@@ -20,10 +20,11 @@ interface ReceiptItem {
   styleUrls: ['./dashboard.component.css']
 })
 export class DashboardComponent implements OnInit {
-  // === TABS & PANELS STATE ===
   leftTab: 'camera' | 'upload' = 'upload';
   showPreview: boolean = false;
   isDragOver: boolean = false;
+  isScanning: boolean = false;
+  loading: boolean = false;
 
   // === LEFT PANEL ===
   previewUrl: string | null = null;
@@ -115,6 +116,7 @@ export class DashboardComponent implements OnInit {
     if (isPdfFile) {
       this.isPdf = true;
       this.showStatus('PDF belgesi yükleniyor ve sayfalar çıkarılıyor...', 'info');
+      this.clearFormInputsOnly();
       this.cdr.detectChanges();
 
       const reader = new FileReader();
@@ -159,11 +161,13 @@ export class DashboardComponent implements OnInit {
   }
 
   triggerOcrScan(fileToScan: File | Blob): void {
+    this.isScanning = true;
     this.showStatus('Dosya çözümleniyor...', 'info');
     this.cdr.detectChanges();
     
     this.apiService.scanReceipt(fileToScan).subscribe({
       next: (res) => {
+        this.isScanning = false;
         setTimeout(() => {
           const data = res.data; 
           this.merchantName = data.firma_adi || '';
@@ -202,11 +206,9 @@ export class DashboardComponent implements OnInit {
         }, 0);
       },
       error: (err) => {
-        setTimeout(() => {
-          const errorMsg = err.error?.error || err.error?.message || err.message;
-          this.showStatus('Görüntü okunamadı: ' + errorMsg, 'error', 5000);
-          this.cdr.detectChanges();
-        }, 0);
+        this.isScanning = false;
+        this.showStatus('OCR başarısız oldu: ' + (err.error?.error || err.message), 'error', 8000);
+        this.cdr.detectChanges();
       }
     });
   }
@@ -248,6 +250,7 @@ export class DashboardComponent implements OnInit {
   prevPdfPage(): void {
     if (this.pdfCurrentPage > 1) {
       this.pdfCurrentPage--;
+      this.clearFormInputsOnly();
       this.renderPdfPage();
     }
   }
@@ -255,6 +258,7 @@ export class DashboardComponent implements OnInit {
   nextPdfPage(): void {
     if (this.pdfCurrentPage < this.pdfTotalPages) {
       this.pdfCurrentPage++;
+      this.clearFormInputsOnly();
       this.renderPdfPage();
     }
   }
@@ -444,6 +448,25 @@ export class DashboardComponent implements OnInit {
     this.taxAmount = Number(tax.toFixed(2));
   }
 
+  clearFormInputsOnly(): void {
+    this.isInspectMode = false;
+    this.receiptId = null;
+    this.merchantName = '';
+    this.vknTckn = '';
+    this.receiptDate = new Date().toISOString().substring(0, 10);
+    this.fisNo = '';
+    this.totalAmount = 0;
+    this.taxAmount = 0;
+    this.items = [{
+      itemName: 'KDV Satırı',
+      quantity: 1,
+      unitPrice: 0,
+      totalPrice: 0,
+      taxRate: 20
+    }];
+    this.cdr.detectChanges();
+  }
+
   clearForm(): void {
     this.isInspectMode = false;
     this.receiptId = null;
@@ -505,10 +528,16 @@ export class DashboardComponent implements OnInit {
   }
 
   saveReceipt(): void {
+    if (this.loading) return;
+
     if (!this.merchantName.trim()) {
       this.showStatus('Lütfen Mağaza Adını girin.', 'error');
       return;
     }
+
+    this.loading = true;
+    this.showStatus('Kaydediliyor...', 'info');
+    this.cdr.detectChanges();
 
     const payload = {
       id: this.receiptId || 0,
@@ -529,8 +558,6 @@ export class DashboardComponent implements OnInit {
       }))
     };
 
-    this.showStatus('Kaydediliyor...', 'info');
-
     const req = this.receiptId 
       ? this.apiService.updateReceipt(this.receiptId, payload)
       : this.apiService.saveReceipt(payload);
@@ -542,11 +569,13 @@ export class DashboardComponent implements OnInit {
         this.cdr.detectChanges();
 
         setTimeout(() => {
+          this.loading = false;
           this.onReceiptSaved();
           this.cdr.detectChanges();
         }, 1200);
       },
       error: (err) => {
+        this.loading = false;
         const errorMsg = err.error?.error || err.error?.message || err.message;
         this.showStatus('Kayıt başarısız oldu: ' + errorMsg, 'error', 8000);
         this.cdr.detectChanges();
@@ -582,11 +611,13 @@ export class DashboardComponent implements OnInit {
   }
 
   filterReceipts(): void {
+    const groupedList = this.groupReceipts(this.receiptsList);
+
     if (!this.searchQuery.trim()) {
       const oneWeekAgo = new Date();
       oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
       
-      this.filteredReceipts = this.receiptsList.filter(r => {
+      this.filteredReceipts = groupedList.filter(r => {
         if (!r.createdAt) return false;
         const createdDate = new Date(r.createdAt.replace(' ', 'T'));
         return createdDate >= oneWeekAgo;
@@ -594,11 +625,43 @@ export class DashboardComponent implements OnInit {
       return;
     }
     const q = this.searchQuery.toLowerCase();
-    this.filteredReceipts = this.receiptsList.filter(r => 
+    this.filteredReceipts = groupedList.filter(r => 
       r.merchantName.toLowerCase().includes(q) ||
       r.receiptDate.toLowerCase().includes(q) ||
       r.id.toString().includes(q)
     );
+  }
+
+  groupReceipts(list: any[]): any[] {
+    const groups: { [key: string]: any } = {};
+    
+    list.forEach(r => {
+      const key = `${(r.merchantName || '').toLowerCase()}_${r.receiptDate}_${(r.fisNo || '').toLowerCase()}_${r.createdAt}_${(r.createdBy || '').toLowerCase()}`;
+      
+      if (!groups[key]) {
+        groups[key] = {
+          id: r.id,
+          merchantName: r.merchantName,
+          receiptDate: r.receiptDate,
+          createdAt: r.createdAt,
+          fisNo: r.fisNo,
+          vknTckn: r.vknTckn,
+          totalAmount: r.fisinGenelToplami || r.totalAmount,
+          taxAmount: r.taxAmount,
+          fisinGenelToplami: r.fisinGenelToplami,
+          createdBy: r.createdBy,
+          ids: [r.id]
+        };
+      } else {
+        groups[key].ids.push(r.id);
+        groups[key].taxAmount += r.taxAmount;
+        if (!groups[key].fisinGenelToplami) {
+          groups[key].totalAmount += r.totalAmount;
+        }
+      }
+    });
+    
+    return Object.values(groups);
   }
 
   loadReceiptForEdit(id: number): void {

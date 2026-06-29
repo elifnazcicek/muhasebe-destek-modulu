@@ -203,7 +203,7 @@
         </div>
 
         <div style="display: flex; gap: 10px;">
-          <button *ngIf="!isInspectMode" type="submit" class="btn btn-accent btn-block" [disabled]="!merchantName || !totalAmount">
+          <button *ngIf="!isInspectMode" type="submit" class="btn btn-accent btn-block" [disabled]="!merchantName || !totalAmount || loading || isScanning">
             💾 {{ receiptId ? 'Veritabanındaki Kaydı Güncelle' : 'Veritabanına Kalıcı Kaydet' }}
           </button>
           <button *ngIf="isInspectMode" type="button" class="btn btn-secondary btn-block" (click)="cancelInspect()" style="background-color: #0ea5e9; border: none; color: white;">
