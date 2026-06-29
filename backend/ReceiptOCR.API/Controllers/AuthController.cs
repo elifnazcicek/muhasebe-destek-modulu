@@ -73,17 +73,21 @@ namespace ReceiptOCR.API.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest request)
         {
-            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
-                return BadRequest(new AuthResponse { Success = false, Error = "Kullanıcı adı ve şifre zorunludur." });
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password) || string.IsNullOrWhiteSpace(request.Email))
+                return BadRequest(new AuthResponse { Success = false, Error = "Kullanıcı adı, şifre ve e-posta zorunludur." });
 
             if (await _context.Users.AnyAsync(u => u.Username.ToLower() == request.Username.ToLower()))
                 return BadRequest(new AuthResponse { Success = false, Error = "Bu kullanıcı adı zaten alınmış." });
+
+            if (await _context.Users.AnyAsync(u => u.Email.ToLower() == request.Email.ToLower()))
+                return BadRequest(new AuthResponse { Success = false, Error = "Bu e-posta adresi zaten kullanımda." });
 
             var user = new User
             {
                 Username = request.Username,
                 PasswordHash = HashPassword(request.Password),
                 FullName = request.Username, // Varsayılan olarak username atanıyor
+                Email = request.Email,
                 Role = "User",
                 IsActive = true,
                 CreatedDate = DateTime.Now
@@ -262,6 +266,7 @@ namespace ReceiptOCR.API.Controllers
     {
         public string Username { get; set; } = string.Empty;
         public string Password { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
     }
 
     public class LogoutRequest

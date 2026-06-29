@@ -17,6 +17,7 @@ export class LoginComponent implements OnInit {
   username = '';
   password = '';
   confirmPassword = '';
+  email = ''; // E-posta alanı
   rememberMe = false;
 
   errorMessage = '';
@@ -44,6 +45,7 @@ export class LoginComponent implements OnInit {
     this.successMessage = '';
     this.password = '';
     this.confirmPassword = '';
+    this.email = '';
     
     if (this.mode === 'register') {
       this.username = '';
@@ -116,8 +118,14 @@ export class LoginComponent implements OnInit {
   }
 
   private handleRegister(): void {
-    if (!this.username.trim() || !this.password.trim() || !this.confirmPassword.trim()) {
+    if (!this.username.trim() || !this.password.trim() || !this.confirmPassword.trim() || !this.email.trim()) {
       this.errorMessage = 'Lütfen tüm alanları doldurun.';
+      return;
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(this.email.trim())) {
+      this.errorMessage = 'Geçersiz e-posta adresi.';
       return;
     }
 
@@ -134,7 +142,7 @@ export class LoginComponent implements OnInit {
     this.loading = true;
     this.errorMessage = '';
 
-    this.apiService.register({ username: this.username, password: this.password }).subscribe({
+    this.apiService.register({ username: this.username, password: this.password, email: this.email }).subscribe({
       next: (res) => {
         console.log('Register next: Response received from API:', res);
         if (res.success) {
