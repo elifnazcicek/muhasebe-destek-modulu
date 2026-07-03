@@ -1,11 +1,4 @@
 <div class="user-management-container">
-  <header class="management-header">
-    <div class="header-title">
-      <h1>👥 Kullanıcı Yetki Yönetimi</h1>
-      <p class="subtitle">Sisteme kayıtlı personelin rollerini (Çalışan/Yönetici) değiştirebilir ve hesaplarını dondurabilirsiniz.</p>
-    </div>
-    <button class="btn btn-secondary" (click)="goBack()">◀ Ana Sayfaya Dön</button>
-  </header>
 
   <!-- Bildirim Şeridi -->
   <div *ngIf="statusMessage" class="process-alert" [ngClass]="statusType" style="margin-bottom: 20px;">
@@ -39,18 +32,18 @@
               <td class="date-cell">{{ u.createdDate }}</td>
               <td>
                 <span class="role-badge" [class.admin]="u.role === 'Admin'">
-                  {{ u.role === 'Admin' ? '👑 Yönetici (Admin)' : '👤 Çalışan (User)' }}
+                  {{ u.role === 'Admin' ? 'Yönetici (Admin)' : 'Çalışan (User)' }}
                 </span>
               </td>
               <td>
                 <span class="status-badge" [class.active]="u.isActive" [class.inactive]="!u.isActive">
-                  {{ u.isActive ? '🟢 Aktif' : '🔴 Donduruldu' }}
+                  {{ u.isActive ? 'Aktif' : 'Donduruldu' }}
                 </span>
               </td>
               <td style="text-align: center;">
                 <div class="action-buttons-group">
                   <button type="button" class="btn btn-xs btn-outline-role" (click)="toggleRole(u)" title="Kullanıcının rolünü değiştirir">
-                    🔄 Rol
+                    Rol Değiştir
                   </button>
                   <button type="button" 
                           class="btn btn-xs" 
@@ -59,7 +52,7 @@
                           [disabled]="u.username.toLowerCase() === adminUsername.toLowerCase()"
                           (click)="toggleStatus(u)"
                           [title]="u.username.toLowerCase() === adminUsername.toLowerCase() ? 'Kendi hesabınızı donduramazsınız.' : 'Kullanıcı erişimini kapatır/açar'">
-                    🔒 {{ u.isActive ? 'Dondur' : 'Aktifleştir' }}
+                    {{ u.isActive ? 'Dondur' : 'Aktifleştir' }}
                   </button>
                 </div>
               </td>

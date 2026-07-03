@@ -78,6 +78,12 @@ namespace ReceiptOCR.API.Services
             using var scope = _scopeFactory.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ReceiptDbContext>();
 
+            if (item.ItemType == "DEKONT")
+            {
+                await WriteDekontToExcelAsync(item, db, cancellationToken);
+                return;
+            }
+
             var excelPathSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "ExcelPath", cancellationToken);
             string excelPath = excelPathSetting?.Value ?? @"C:\Muhasebe\Masraflar.xlsx";
 
@@ -101,90 +107,268 @@ namespace ReceiptOCR.API.Services
                 }
             }
 
-            using var workbook = existsAndValid ? new XLWorkbook(excelPath) : new XLWorkbook();
-            var worksheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "Masraflar") ?? workbook.Worksheets.Add("Masraflar");
-
-            if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Tarih" || worksheet.Cell(1, 9).Value.ToString() != "Fişin Genel Toplamı")
+            // Excel dosyasını güvenli yazma ve yedekleme mekanizması (Safe-Write & Auto-Backup)
+            string backupPath = excelPath + ".bak";
+            if (existsAndValid)
             {
-                worksheet.Cell(1, 1).Value = "Tarih";
-                worksheet.Cell(1, 2).Value = "Firma Adi";
-                worksheet.Cell(1, 3).Value = "Fis No";
-                worksheet.Cell(1, 4).Value = "Vkn Tckn";
-                worksheet.Cell(1, 5).Value = "KDV Oranı";
-                worksheet.Cell(1, 6).Value = "Kdv Tutari";
-                worksheet.Cell(1, 7).Value = "Toplam Tutar";
-                worksheet.Cell(1, 8).Value = "Matrah";
-                worksheet.Cell(1, 9).Value = "Fişin Genel Toplamı";
-                worksheet.Cell(1, 10).Value = "Kaydeden Kullanici";
-
-                var headerRow = worksheet.Row(1);
-                headerRow.Style.Font.Bold = true;
-                headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
-            }
-
-            if (item.Action == "DELETE")
-            {
-                int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-                for (int r = lastRowNumber; r >= 2; r--)
+                try
                 {
-                    var cellFirma = worksheet.Cell(r, 2).Value.ToString();
-                    var cellFisNo = worksheet.Cell(r, 3).Value.ToString();
-                    var cellKdvOrani = worksheet.Cell(r, 5).Value.ToString().Replace("%", "").Trim();
-                    
-                    if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo && cellKdvOrani == item.KdvOrani.ToString()) ||
-                        (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellKdvOrani == item.KdvOrani.ToString()))
-                    {
-                        worksheet.Row(r).Delete();
-                        _logger.LogInformation("Excel satiri silindi: Satir {Row}", r);
-                    }
+                    File.Copy(excelPath, backupPath, true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Expense Excel yedek dosyasi olusturulamadi.");
                 }
             }
-            else if (item.Action == "UPDATE")
-            {
-                bool rowFound = false;
-                int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
-                for (int r = 2; r <= lastRowNumber; r++)
-                {
-                    var cellFirma = worksheet.Cell(r, 2).Value.ToString();
-                    var cellFisNo = worksheet.Cell(r, 3).Value.ToString();
-                    var cellKdvOrani = worksheet.Cell(r, 5).Value.ToString().Replace("%", "").Trim();
-                    
-                    if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo && cellKdvOrani == item.KdvOrani.ToString()) ||
-                        (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellKdvOrani == item.KdvOrani.ToString()))
-                    {
-                        worksheet.Cell(r, 1).Value = item.Tarih.ToString("yyyy-MM-dd");
-                        worksheet.Cell(r, 2).Value = item.FirmaAdi;
-                        worksheet.Cell(r, 3).Value = item.FisNo ?? "";
-                        worksheet.Cell(r, 4).Value = item.VknTckn ?? "";
-                        worksheet.Cell(r, 5).Value = item.KdvOrani + "%";
-                        worksheet.Cell(r, 6).Value = item.KdvTutari;
-                        worksheet.Cell(r, 7).Value = item.ToplamTutar;
-                        worksheet.Cell(r, 8).Value = item.Matrah;
-                        worksheet.Cell(r, 9).Value = item.FisinGenelToplami;
-                        worksheet.Cell(r, 10).Value = item.KaydedenKullanici;
 
-                        worksheet.Cell(r, 6).Style.NumberFormat.Format = "0.00";
-                        worksheet.Cell(r, 7).Style.NumberFormat.Format = "0.00";
-                        worksheet.Cell(r, 8).Style.NumberFormat.Format = "0.00";
-                        worksheet.Cell(r, 9).Style.NumberFormat.Format = "0.00";
-                        rowFound = true;
-                        _logger.LogInformation("Excel satiri guncellendi: Satir {Row}", r);
-                        break;
-                    }
+            try
+            {
+                using var workbook = existsAndValid ? new XLWorkbook(excelPath) : new XLWorkbook();
+                var worksheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "Masraflar") ?? workbook.Worksheets.Add("Masraflar");
+
+                if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Tarih" || worksheet.Cell(1, 9).Value.ToString() != "Fişin Genel Toplamı")
+                {
+                    worksheet.Cell(1, 1).Value = "Tarih";
+                    worksheet.Cell(1, 2).Value = "Firma Adi";
+                    worksheet.Cell(1, 3).Value = "Fis No";
+                    worksheet.Cell(1, 4).Value = "Vkn Tckn";
+                    worksheet.Cell(1, 5).Value = "KDV Oranı";
+                    worksheet.Cell(1, 6).Value = "Kdv Tutari";
+                    worksheet.Cell(1, 7).Value = "Toplam Tutar";
+                    worksheet.Cell(1, 8).Value = "Matrah";
+                    worksheet.Cell(1, 9).Value = "Fişin Genel Toplamı";
+                    worksheet.Cell(1, 10).Value = "Kaydeden Kullanici";
+
+                    var headerRow = worksheet.Row(1);
+                    headerRow.Style.Font.Bold = true;
+                    headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
                 }
 
-                if (!rowFound)
+                if (item.Action == "DELETE")
+                {
+                    int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+                    for (int r = lastRowNumber; r >= 2; r--)
+                    {
+                        var cellFirma = worksheet.Cell(r, 2).Value.ToString();
+                        var cellFisNo = worksheet.Cell(r, 3).Value.ToString();
+                        var cellKdvOrani = worksheet.Cell(r, 5).Value.ToString().Replace("%", "").Trim();
+                        
+                        if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo && cellKdvOrani == item.KdvOrani.ToString()) ||
+                            (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellKdvOrani == item.KdvOrani.ToString()))
+                        {
+                            worksheet.Row(r).Delete();
+                            _logger.LogInformation("Excel satiri silindi: Satir {Row}", r);
+                        }
+                    }
+                }
+                else if (item.Action == "UPDATE")
+                {
+                    bool rowFound = false;
+                    int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+                    for (int r = 2; r <= lastRowNumber; r++)
+                    {
+                        var cellFirma = worksheet.Cell(r, 2).Value.ToString();
+                        var cellFisNo = worksheet.Cell(r, 3).Value.ToString();
+                        var cellKdvOrani = worksheet.Cell(r, 5).Value.ToString().Replace("%", "").Trim();
+                        
+                        if ((!string.IsNullOrEmpty(item.FisNo) && cellFisNo == item.FisNo && cellKdvOrani == item.KdvOrani.ToString()) ||
+                            (cellFirma == item.FirmaAdi && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellKdvOrani == item.KdvOrani.ToString()))
+                        {
+                            worksheet.Cell(r, 1).Value = item.Tarih.ToString("yyyy-MM-dd");
+                            worksheet.Cell(r, 2).Value = item.FirmaAdi;
+                            worksheet.Cell(r, 3).Value = item.FisNo ?? "";
+                            worksheet.Cell(r, 4).Value = item.VknTckn ?? "";
+                            worksheet.Cell(r, 5).Value = item.KdvOrani + "%";
+                            worksheet.Cell(r, 6).Value = item.KdvTutari;
+                            worksheet.Cell(r, 7).Value = item.ToplamTutar;
+                            worksheet.Cell(r, 8).Value = item.Matrah;
+                            worksheet.Cell(r, 9).Value = item.FisinGenelToplami;
+                            worksheet.Cell(r, 10).Value = item.KaydedenKullanici;
+
+                            worksheet.Cell(r, 6).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 7).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 8).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 9).Style.NumberFormat.Format = "0.00";
+                            rowFound = true;
+                            _logger.LogInformation("Excel satiri guncellendi: Satir {Row}", r);
+                            break;
+                        }
+                    }
+
+                    if (!rowFound)
+                    {
+                        AppendRow(worksheet, item);
+                    }
+                }
+                else
                 {
                     AppendRow(worksheet, item);
                 }
+
+                worksheet.Columns().AdjustToContents();
+                workbook.SaveAs(excelPath);
+
+                // Başarılı kayıtta yedeği sil
+                if (File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                }
             }
-            else
+            catch (Exception)
             {
-                AppendRow(worksheet, item);
+                // Hata durumunda yedeği geri yükle
+                if (File.Exists(backupPath))
+                {
+                    try
+                    {
+                        File.Copy(backupPath, excelPath, true);
+                        File.Delete(backupPath);
+                    }
+                    catch {}
+                }
+                throw;
+            }
+        }
+
+        private async Task WriteDekontToExcelAsync(ExcelQueueItem item, ReceiptDbContext db, CancellationToken cancellationToken)
+        {
+            var excelPathSetting = await db.Settings.FirstOrDefaultAsync(s => s.Key == "DekontExcelPath", cancellationToken);
+            string excelPath = excelPathSetting?.Value ?? @"C:\Muhasebe\Dekontlar.xlsx";
+
+            var directory = Path.GetDirectoryName(excelPath);
+            if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
+            {
+                Directory.CreateDirectory(directory);
             }
 
-            worksheet.Columns().AdjustToContents();
-            workbook.SaveAs(excelPath);
+            bool existsAndValid = File.Exists(excelPath);
+            if (existsAndValid)
+            {
+                try
+                {
+                    using var testWb = new XLWorkbook(excelPath);
+                }
+                catch
+                {
+                    File.Delete(excelPath);
+                    existsAndValid = false;
+                }
+            }
+
+            // Excel dosyasını güvenli yazma ve yedekleme mekanizması (Safe-Write & Auto-Backup)
+            string backupPath = excelPath + ".bak";
+            if (existsAndValid)
+            {
+                try
+                {
+                    File.Copy(excelPath, backupPath, true);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Dekont Excel yedek dosyasi olusturulamadi.");
+                }
+            }
+
+            try
+            {
+                using var workbook = existsAndValid ? new XLWorkbook(excelPath) : new XLWorkbook();
+                var worksheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "Dekontlar") ?? workbook.Worksheets.Add("Dekontlar");
+
+                if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Hesap No" || worksheet.Cell(1, 5).Value.ToString() != "Tutar")
+                {
+                    worksheet.Cell(1, 1).Value = "Hesap No";
+                    worksheet.Cell(1, 2).Value = "Tarih";
+                    worksheet.Cell(1, 3).Value = "Dekont No";
+                    worksheet.Cell(1, 4).Value = "Karsi Taraf";
+                    worksheet.Cell(1, 5).Value = "Tutar";
+                    worksheet.Cell(1, 6).Value = "Masraf";
+                    worksheet.Cell(1, 7).Value = "Aciklama";
+                    worksheet.Cell(1, 8).Value = "Kaydeden Kullanici";
+
+                    var headerRow = worksheet.Row(1);
+                    headerRow.Style.Font.Bold = true;
+                    headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+                }
+
+                if (item.Action == "DELETE")
+                {
+                    int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+                    for (int r = lastRowNumber; r >= 2; r--)
+                    {
+                        var cellDekontNo = worksheet.Cell(r, 3).Value.ToString();
+                        var cellHesapNo = worksheet.Cell(r, 1).Value.ToString();
+                        var cellTutar = worksheet.Cell(r, 5).Value.ToString();
+                        
+                        if ((!string.IsNullOrEmpty(item.DekontNo) && cellDekontNo == item.DekontNo) ||
+                            (cellHesapNo == item.HesapNo && worksheet.Cell(r, 2).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellTutar == item.Tutar.ToString()))
+                        {
+                            worksheet.Row(r).Delete();
+                            _logger.LogInformation("Excel dekont satiri silindi: Satir {Row}", r);
+                        }
+                    }
+                }
+                else if (item.Action == "UPDATE")
+                {
+                    bool rowFound = false;
+                    int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+                    for (int r = 2; r <= lastRowNumber; r++)
+                    {
+                        var cellDekontNo = worksheet.Cell(r, 3).Value.ToString();
+                        var cellHesapNo = worksheet.Cell(r, 1).Value.ToString();
+                        
+                        if ((!string.IsNullOrEmpty(item.DekontNo) && cellDekontNo == item.DekontNo) ||
+                            (cellHesapNo == item.HesapNo && worksheet.Cell(r, 2).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellDekontNo == item.DekontNo))
+                        {
+                            worksheet.Cell(r, 1).Value = item.HesapNo ?? "";
+                            worksheet.Cell(r, 2).Value = item.Tarih.ToString("yyyy-MM-dd");
+                            worksheet.Cell(r, 3).Value = item.DekontNo ?? "";
+                            worksheet.Cell(r, 4).Value = item.KarsiTaraf ?? "";
+                            worksheet.Cell(r, 5).Value = item.Tutar;
+                            worksheet.Cell(r, 6).Value = item.Masraf;
+                            worksheet.Cell(r, 7).Value = item.Aciklama ?? "";
+                            worksheet.Cell(r, 8).Value = item.KaydedenKullanici;
+
+                            worksheet.Cell(r, 5).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 6).Style.NumberFormat.Format = "0.00";
+                            rowFound = true;
+                            _logger.LogInformation("Excel dekont satiri guncellendi: Satir {Row}", r);
+                            break;
+                        }
+                    }
+
+                    if (!rowFound)
+                    {
+                        AppendDekontRow(worksheet, item);
+                    }
+                }
+                else
+                {
+                    AppendDekontRow(worksheet, item);
+                }
+
+                worksheet.Columns().AdjustToContents();
+                workbook.SaveAs(excelPath);
+
+                // Başarılı kayıtta yedeği sil
+                if (File.Exists(backupPath))
+                {
+                    File.Delete(backupPath);
+                }
+            }
+            catch (Exception)
+            {
+                // Hata durumunda yedeği geri yükle
+                if (File.Exists(backupPath))
+                {
+                    try
+                    {
+                        File.Copy(backupPath, excelPath, true);
+                        File.Delete(backupPath);
+                    }
+                    catch {}
+                }
+                throw;
+            }
         }
 
         private void AppendRow(IXLWorksheet worksheet, ExcelQueueItem item)
@@ -208,6 +392,25 @@ namespace ReceiptOCR.API.Services
             worksheet.Cell(newRow, 8).Style.NumberFormat.Format = "0.00";
             worksheet.Cell(newRow, 9).Style.NumberFormat.Format = "0.00";
             _logger.LogInformation("Excel'e yeni satir eklendi: Satir {Row}", newRow);
+        }
+
+        private void AppendDekontRow(IXLWorksheet worksheet, ExcelQueueItem item)
+        {
+            int lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
+            int newRow = lastRow + 1;
+
+            worksheet.Cell(newRow, 1).Value = item.HesapNo ?? "";
+            worksheet.Cell(newRow, 2).Value = item.Tarih.ToString("yyyy-MM-dd");
+            worksheet.Cell(newRow, 3).Value = item.DekontNo ?? "";
+            worksheet.Cell(newRow, 4).Value = item.KarsiTaraf ?? "";
+            worksheet.Cell(newRow, 5).Value = item.Tutar;
+            worksheet.Cell(newRow, 6).Value = item.Masraf;
+            worksheet.Cell(newRow, 7).Value = item.Aciklama ?? "";
+            worksheet.Cell(newRow, 8).Value = item.KaydedenKullanici;
+
+            worksheet.Cell(newRow, 5).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 6).Style.NumberFormat.Format = "0.00";
+            _logger.LogInformation("Excel'e yeni dekont satiri eklendi: Satir {Row}", newRow);
         }
 
         private async Task LogErrorToDbAsync(ExcelQueueItem item, Exception ex)

@@ -1,0 +1,34 @@
+<div class="welcome-container">
+  <!-- Karşılama Kartı -->
+  <div class="welcome-card">
+    <h2>Hoş Geldiniz, {{ currentUsername }}</h2>
+    <p>Muhasebe Destek Modülü Otomasyonu, işletmenizin fiş ve fatura süreçlerini kolaylaştırmak ve hızlandırmak için özel olarak geliştirilmiştir.</p>
+  </div>
+
+  <!-- Sistem Modülleri / Özellikler Listesi -->
+  <div class="features-grid">
+    
+    <!-- Kart 1: Fiş Okuma -->
+    <div class="feature-card">
+      <div class="card-icon">■</div>
+      <h3>Fiş Okuma Otomasyonu</h3>
+      <p>Gemini yapay zeka entegrasyonu ile fiş görsellerini saniyeler içinde okuyup matrah, KDV oranı ve KDV tutarı bazında çözümler. Kayıtlar veritabanına ve özel Masraf Excel dosyasına kaydedilir.</p>
+      <a routerLink="/dashboard" class="btn btn-primary btn-sm btn-action">Fiş Okumaya Git</a>
+    </div>
+
+    <!-- Kart 2: e-Fatura Aktarımı -->
+    <div class="feature-card">
+      <div class="card-icon">■</div>
+      <h3>Uyumsoft e-Fatura Aktarımı</h3>
+      <p>Uyumsoft XML faturalarını veya PDF dekont dosyalarını otomatik olarak çözümler. Tedarikçi VKN bilgisine göre cari kart kontrolü yapar. Bulunamayan cari kartları oluşturup Excel formatında Mikro ERP'ye hazır hale getirir.</p>
+      <a routerLink="/dekont" class="btn btn-accent btn-sm btn-action">Uyumsoft Entegrasyonuna Git</a>
+    </div>
+
+  </div>
+
+  <!-- Güvenli Ayrı Depolama Hatırlatıcısı (Veritabanı ve Excel Ayrımı) -->
+  <div class="info-notice">
+    <strong>Önemli Bilgilendirme:</strong>
+    <p>Veri bütünlüğü ve muhasebe standartları gereği, fiş masraf kayıtları ile fatura dekont verileri tamamen ayrı tablolarda depolanmakta ve ayrı Excel dosyalarında saklanmaktadır.</p>
+  </div>
+</div>

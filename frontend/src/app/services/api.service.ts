@@ -42,6 +42,32 @@ export class ApiService {
     return this.http.delete<any>(`${this.baseUrl}/receipt/${id}?username=${encodeURIComponent(username)}`);
   }
 
+  // ==========================================
+  // DEKONT ENDPOINTS (Banka Dekontu & Yapay Zeka)
+  // ==========================================
+  scanDekont(file: File | Blob): Observable<any> {
+    const formData = new FormData();
+    formData.append('file', file, 'dekont.jpg');
+    return this.http.post<any>(`${this.baseUrl}/dekont/scan`, formData);
+  }
+
+  getDekonts(username?: string): Observable<any[]> {
+    const url = username ? `${this.baseUrl}/dekont/history?username=${encodeURIComponent(username)}` : `${this.baseUrl}/dekont/history`;
+    return this.http.get<any[]>(url);
+  }
+
+  saveDekont(dekont: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/dekont/confirm`, dekont);
+  }
+
+  updateDekont(id: number, dekont: any): Observable<any> {
+    return this.http.put<any>(`${this.baseUrl}/dekont/${id}`, dekont);
+  }
+
+  deleteDekont(id: number, username: string): Observable<any> {
+    return this.http.delete<any>(`${this.baseUrl}/dekont/${id}?username=${encodeURIComponent(username)}`);
+  }
+
 
 
   // ==========================================================

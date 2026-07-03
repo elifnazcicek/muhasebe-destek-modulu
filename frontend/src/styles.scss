@@ -1,33 +1,34 @@
-/* ==========================================
-   SmartReceipt - Clean Professional Stylesheet
-   ========================================== */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400;600;700&family=Fira+Code:wght@400;500&display=swap');
+/* ==========================================================================
+   SmartReceipt - Light Glassmorphism Global Stylesheet (Outfit & Inter Fonts)
+   ========================================================================== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap');
 
 :root {
-    --bg-main: #f1f5f9;            /* Slate 100 - Soft Light Background */
-    --panel-bg: #ffffff;          /* Pure White for panels */
-    --panel-border: #e2e8f0;      /* Slate 200 - Soft borders */
-    --input-bg: #ffffff;
-    --input-border: #cbd5e1;      /* Slate 300 */
+    /* Açık Renk Premium Cam Teması Değişkenleri */
+    --bg-main: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%);
+    --panel-bg: rgba(255, 255, 255, 0.55); /* Beyaza yakın şeffaf buzlu cam */
+    --panel-border: rgba(255, 255, 255, 0.4); /* Parlak beyaz cam çerçevesi */
+    --input-bg: rgba(255, 255, 255, 0.85); /* Net temiz beyaz zemin */
+    --input-border: rgba(148, 163, 184, 0.25);
     
-    /* Corporate Color Palette */
-    --color-primary: #4f46e5;       /* Indigo 600 */
-    --color-primary-hover: #4338ca; /* Indigo 700 */
-    --color-accent: #059669;        /* Emerald 700 */
-    --color-accent-hover: #047857;  /* Emerald 800 */
-    --color-danger: #dc2626;        /* Red 600 */
-    --color-danger-hover: #b91c1c;  /* Red 700 */
-    --color-warning: #d97706;       /* Amber 600 */
+    /* Parlak Gökyüzü Mavisi Vurgular */
+    --color-primary: #0ea5e9;       /* Sky 500 */
+    --color-primary-hover: #0284c7; /* Sky 600 */
+    --color-accent: #10b981;        /* Emerald 500 */
+    --color-accent-hover: #059669;  /* Emerald 600 */
+    --color-danger: #ef4444;        /* Red 500 */
+    --color-danger-hover: #dc2626;  /* Red 600 */
+    --color-warning: #f59e0b;       /* Amber 500 */
     
     --text-main: #0f172a;           /* Slate 900 */
     --text-muted: #475569;          /* Slate 600 */
-    --text-light: #94a3b8;          /* Slate 400 */
+    --text-light: #64748b;          /* Slate 500 */
     
-    --shadow-sm: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
-    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
-    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.03), 0 4px 6px -4px rgba(0, 0, 0, 0.03);
+    --shadow-sm: 0 1px 3px 0 rgba(148, 163, 184, 0.08);
+    --shadow-md: 0 4px 6px -1px rgba(148, 163, 184, 0.12);
+    --shadow-lg: 0 10px 30px 0 rgba(148, 163, 184, 0.15);
     
-    --transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 * {
@@ -37,40 +38,43 @@
 }
 
 body {
-    font-family: 'Inter', sans-serif;
-    background-color: var(--bg-main);
-    color: var(--text-main);
+    /* Eski sevilen yuvarlak, modern yazı tipi ailesi */
+    font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+    background: var(--bg-main) !important;
+    background-attachment: fixed !important;
+    color: var(--text-main) !important;
     min-height: 100vh;
     overflow-x: hidden;
     line-height: 1.5;
+    font-size: 14.5px; /* Yazı puntosu daha da büyütüldü */
 }
 
-/* Scrollbar Customization */
+/* Scrollbar Özelleştirme */
 ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 ::-webkit-scrollbar-track {
-    background: transparent;
+    background: rgba(0, 0, 0, 0.02);
 }
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
+    background: rgba(148, 163, 184, 0.35);
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: rgba(148, 163, 184, 0.5);
 }
 
-/* Common Buttons */
+/* Ortak Buton Tasarımları (Konforlu puntolar) */
 .btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    gap: 6px;
-    padding: 10px 16px;
+    gap: 8px;
+    padding: 10px 20px;
     border-radius: 8px;
-    font-weight: 600;
-    font-size: 0.85rem;
+    font-weight: 700;
+    font-size: 13px;
     border: 1px solid transparent;
     cursor: pointer;
     transition: var(--transition);
@@ -78,45 +82,45 @@ body {
 }
 
 .btn:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
 }
 
 .btn-primary {
-    background-color: var(--color-primary);
+    background: linear-gradient(135deg, #0ea5e9 0%, #0284c7 100%);
     color: #ffffff;
+    box-shadow: 0 4px 12px rgba(14, 165, 233, 0.15);
 }
 
 .btn-primary:hover:not(:disabled) {
-    background-color: var(--color-primary-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(14, 165, 233, 0.25);
 }
 
 .btn-accent {
-    background-color: var(--color-accent);
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: #ffffff;
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.12);
 }
 
 .btn-accent:hover:not(:disabled) {
-    background-color: var(--color-accent-hover);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.22);
 }
 
 .btn-danger {
-    background-color: var(--color-danger);
+    background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
     color: #ffffff;
 }
 
-.btn-danger:hover:not(:disabled) {
-    background-color: var(--color-danger-hover);
-}
-
 .btn-secondary {
-    background-color: #f8fafc;
+    background-color: rgba(255, 255, 255, 0.6);
     color: var(--text-muted);
     border-color: var(--panel-border);
 }
 
 .btn-secondary:hover:not(:disabled) {
-    background-color: #f1f5f9;
+    background-color: rgba(255, 255, 255, 0.95);
     color: var(--text-main);
 }
 
@@ -127,9 +131,8 @@ body {
 }
 
 .btn-outline:hover:not(:disabled) {
-    background-color: #f8fafc;
+    background-color: rgba(255, 255, 255, 0.5);
     color: var(--text-main);
-    border-color: var(--text-muted);
 }
 
 .btn-block {
@@ -137,27 +140,143 @@ body {
 }
 
 .btn-sm {
-    padding: 6px 12px;
-    font-size: 0.75rem;
-    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12.5px;
+    border-radius: 8px;
 }
 
 .btn-xs {
-    padding: 4px 8px;
-    font-size: 0.72rem;
-    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11px;
+    border-radius: 6px;
 }
 
 /* Spinner */
 .spinner {
-    width: 24px;
-    height: 24px;
-    border: 3px solid rgba(79, 70, 229, 0.1);
+    width: 22px;
+    height: 22px;
+    border: 2px solid rgba(0, 0, 0, 0.1);
     border-radius: 50%;
     border-top-color: var(--color-primary);
-    animation: spin 1s ease-in-out infinite;
+    animation: spin 0.8s linear infinite;
 }
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   Tüm Sayfa ve Bileşenlerin Açık Cam Entegrasyonu
+   ========================================== */
+.card, .panel, .panel-section, .dashboard-container, .archive-container, .log-container {
+    background: var(--panel-bg) !important;
+    backdrop-filter: blur(20px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+    border: 1px solid var(--panel-border) !important;
+    border-radius: 16px !important;
+    color: var(--text-main) !important;
+    box-shadow: var(--shadow-lg) !important;
+}
+
+/* Form Girdi Alanları */
+input, select, textarea {
+    background-color: var(--input-bg) !important;
+    border: 1px solid var(--input-border) !important;
+    color: var(--text-main) !important;
+    font-family: inherit !important;
+    font-size: 13.5px !important;
+    padding: 8px 12px !important;
+    border-radius: 6px !important;
+}
+
+input:focus, select:focus, textarea:focus {
+    border-color: var(--color-primary) !important;
+    box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.15) !important;
+}
+
+/* Dashboard / Fiş Okuma Ekranına Özel Cam Düzenlemeleri */
+.preview-wrapper, .upload-area, .items-container, .archive-card {
+    background: rgba(255, 255, 255, 0.4) !important;
+    border: 1px solid rgba(148, 163, 184, 0.15) !important;
+    color: var(--text-main) !important;
+    border-radius: 10px !important;
+}
+
+.preview-wrapper {
+    box-shadow: inset 0 2px 10px rgba(148, 163, 184, 0.1) !important;
+}
+
+.archive-card:hover {
+    border-color: var(--color-primary) !important;
+    background: rgba(255, 255, 255, 0.85) !important;
+}
+
+/* Tablolar ve Başlıkları */
+#items-table th {
+    background: rgba(241, 245, 249, 0.6) !important;
+    color: var(--text-muted) !important;
+    border-bottom: 1.5px solid rgba(148, 163, 184, 0.2) !important;
+    font-size: 13px !important;
+    font-weight: 700 !important;
+    padding: 10px 8px !important;
+}
+
+#items-table td {
+    border-bottom: 1px solid rgba(148, 163, 184, 0.1) !important;
+    padding: 6px 8px !important;
+}
+
+.table-input {
+    color: var(--text-main) !important;
+    font-size: 13px !important;
+    padding: 6px 10px !important;
+    border-radius: 4px !important;
+}
+
+.table-input:hover {
+    background: rgba(0, 0, 0, 0.02) !important;
+}
+
+.table-input:focus {
+    background: #ffffff !important;
+    border-color: var(--color-primary) !important;
+}
+
+.table-select {
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    border-color: rgba(148, 163, 184, 0.2) !important;
+    color: var(--text-main) !important;
+    font-size: 12.5px !important;
+    padding: 5px 8px !important;
+    border-radius: 4px !important;
+}
+
+.input-with-icon input {
+    background: rgba(255, 255, 255, 0.8) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    color: var(--text-main) !important;
+    padding-left: 32px !important;
+}
+
+.input-with-icon .field-icon {
+    color: var(--text-light) !important;
+    font-size: 14px !important;
+    left: 12px !important;
+}
+
+/* Status Rozetleri */
+.status-badge.active {
+    background: rgba(16, 185, 129, 0.12) !important;
+    color: #047857 !important;
+    border: 1px solid rgba(16, 185, 129, 0.2) !important;
+    font-size: 11.5px !important;
+    padding: 3px 8px !important;
+}
+
+.status-badge {
+    background: rgba(241, 245, 249, 0.8) !important;
+    color: var(--text-muted) !important;
+    border: 1px solid rgba(148, 163, 184, 0.2) !important;
+    font-size: 11.5px !important;
+    padding: 3px 8px !important;
 }

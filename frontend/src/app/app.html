@@ -1,37 +1,108 @@
-<div class="app-container">
-  <!-- Top Navigation Header (Only visible if logged in) -->
-  <header class="app-header" *ngIf="isLoggedIn()">
-    <div class="header-logo">
-      <span class="logo-icon">🧾</span>
-      <div>
-        <h1>SmartReceipt</h1>
-        <p>Kamera Entegreli Fiş Okuma & Veritabanı Otomasyonu</p>
+<div class="workspace-container" [class.logged-out]="!isLoggedIn()">
+  <!-- Uyumsoft Stili Sol Dikey Menü (Açılır-Kapanır) - Emojisiz, Sade ve Resmi -->
+  <aside class="sidebar-menu" *ngIf="isLoggedIn()" [class.collapsed]="isSidebarCollapsed()">
+    <div class="sidebar-logo">
+      <!-- Logo simgesi sadece menü açıkken gösterilir -->
+      <span class="logo-icon" *ngIf="!isSidebarCollapsed()">■</span>
+      <div class="logo-text" *ngIf="!isSidebarCollapsed()">
+        <h2>Muhasebe Destek</h2>
+        <p>Otomasyon Modülü</p>
       </div>
+      <!-- Üç çizgili hamburger menü simgesi - Menü kapalıyken sadece bu görünür -->
+      <button class="btn-toggle-sidebar" (click)="toggleSidebar()" title="Menüyü Daralt/Genişlet">
+        ☰
+      </button>
     </div>
-
-    <nav class="header-nav" *ngIf="isLoggedIn()" style="display: flex; gap: 10px; margin-left: 30px; align-items: center;">
-      <a routerLink="/dashboard" routerLinkActive="active" style="color: var(--text-main); text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 6px; transition: background 0.2s; font-size: 0.9rem;">🏠 Ana Sayfa</a>
-      <a *ngIf="isAdmin()" routerLink="/users" routerLinkActive="active" style="color: var(--text-main); text-decoration: none; font-weight: 500; padding: 6px 12px; border-radius: 6px; transition: background 0.2s; font-size: 0.9rem;">👥 Yetkiler</a>
+    
+    <!-- Menü linkleri sadece açıkken gösterilir -->
+    <nav style="flex: 1;" *ngIf="!isSidebarCollapsed()">
+      <ul class="nav-links">
+        <li>
+          <a routerLink="/home" routerLinkActive="active" class="nav-item">
+            <span class="bullet-dot">•</span>
+            <span class="label">Ana Sayfa</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dashboard" routerLinkActive="active" class="nav-item">
+            <span class="bullet-dot">•</span>
+            <span class="label">Fiş Okuma</span>
+          </a>
+        </li>
+        <li>
+          <a routerLink="/dekont" routerLinkActive="active" class="nav-item">
+            <span class="bullet-dot">•</span>
+            <span class="label">Uyumsoft Aktarımı</span>
+          </a>
+        </li>
+        <li *ngIf="isAdmin()">
+          <a routerLink="/users" routerLinkActive="active" class="nav-item">
+            <span class="bullet-dot">•</span>
+            <span class="label">Yetki Yönetimi</span>
+          </a>
+        </li>
+      </ul>
     </nav>
     
-    <div class="header-actions">
-      <span class="user-badge" *ngIf="getUsername()">
-        <span>{{ getUsername() }}</span>
-      </span>
-      <button class="btn btn-accent" (click)="downloadExcel()" style="margin-right: 8px;">
-        <svg class="excel-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 18px; height: 18px; fill: currentColor; vertical-align: middle; margin-right: 2px;">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5H14L12 13l-2 3.5H8.2l2.9-4.7-2.7-4.3H10l1.7 3.1 1.7-3.1h1.8l-2.7 4.3 3.3 4.7zM13 9V3.5L18.5 9H13z"/>
-        </svg>
-        Excel Raporu İndir
-      </button>
-      <button class="btn btn-outline" (click)="logout()">
-        🚪 Çıkış Yap
+    <!-- Footer alanı sadece açıkken gösterilir -->
+    <div class="sidebar-footer" *ngIf="!isSidebarCollapsed()" style="margin-top: auto; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.06);">
+      <div class="user-info" style="display: flex; flex-direction: column; gap: 2px; margin-bottom: 10px; font-size: 12px;">
+        <span style="font-weight: 700; color: #ffffff;">Kullanıcı: {{ getUsername() }}</span>
+        <span style="color: #cbd5e1; font-size: 11px;">Rol: {{ isAdmin() ? 'Yönetici' : 'Personel' }}</span>
+      </div>
+      <button class="btn btn-secondary btn-sm btn-block" (click)="logout()" style="background-color: rgba(255, 255, 255, 0.08); border: none; color: #f8fafc; font-weight: 600; padding: 8px 12px; display: flex; align-items: center; justify-content: center;">
+        <span class="label">Çıkış Yap</span>
       </button>
     </div>
-  </header>
+  </aside>
 
-  <!-- Main Content Wrapper -->
-  <main class="app-main">
-    <router-outlet></router-outlet>
+  <!-- Ana İçerik Alanı -->
+  <main class="main-content">
+    <!-- Emojisiz, Profesyonel Üst Başlık Barı - Dinamik Başlık ve Açıklamalar -->
+    <header class="content-header" *ngIf="isLoggedIn()" [class.has-back-button]="!isHomeRoute()">
+      <!-- Sol kenara docked dikey ince geri butonu (Görseldeki şık chevron-left SVG oku ile) -->
+      <button *ngIf="!isHomeRoute()" class="btn-back-strip" routerLink="/home" title="Ana Sayfaya Dön">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; display: block;">
+          <polyline points="15 18 9 12 15 6"></polyline>
+        </svg>
+      </button>
+      
+      <div class="header-title">
+        <!-- Anasayfa dışındaki sekmelerde sayfa açıklamasının yukarısında marka başlığı görünür -->
+        <span *ngIf="!isHomeRoute()" class="brand-tag">Muhasebe Destek Modülü</span>
+        <h1 [class.home-title]="isHomeRoute()">{{ getHeaderTitle() }}</h1>
+        <p [class.home-subtitle]="isHomeRoute()">{{ getHeaderSubtitle() }}</p>
+      </div>
+      
+      <!-- Excel indirme butonu sadece Fiş Okuma ve Uyumsoft sayfalarında gösterilir -->
+      <div class="header-meta" *ngIf="showExcelButton()">
+        <!-- Fiş Okuma Sayfasındaki Rapor Butonu -->
+        <button *ngIf="isDashboardRoute()" class="btn btn-primary btn-sm" (click)="downloadExcel()">
+          <svg class="excel-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; vertical-align: middle; margin-right: 6px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5H14L12 13l-2 3.5H8.2l2.9-4.7-2.7-4.3H10l1.7 3.1 1.7-3.1h1.8l-2.7 4.3 3.3 4.7zM13 9V3.5L18.5 9H13z"/>
+          </svg>
+          Excel Raporu İndir
+        </button>
+
+        <!-- Uyumsoft Aktarımı Sayfasındaki Rapor Butonları (Aynı renkte - btn-primary) -->
+        <button *ngIf="isDekontRoute()" class="btn btn-primary btn-sm" (click)="downloadAlisExcel()" style="margin-right: 8px;">
+          <svg class="excel-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; vertical-align: middle; margin-right: 6px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5H14L12 13l-2 3.5H8.2l2.9-4.7-2.7-4.3H10l1.7 3.1 1.7-3.1h1.8l-2.7 4.3 3.3 4.7zM13 9V3.5L18.5 9H13z"/>
+          </svg>
+          Alış Tablosu İndir
+        </button>
+        <button *ngIf="isDekontRoute()" class="btn btn-primary btn-sm" (click)="downloadSatisExcel()">
+          <svg class="excel-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" style="width: 16px; height: 16px; fill: currentColor; vertical-align: middle; margin-right: 6px;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm1.8 14.5H14L12 13l-2 3.5H8.2l2.9-4.7-2.7-4.3H10l1.7 3.1 1.7-3.1h1.8l-2.7 4.3 3.3 4.7zM13 9V3.5L18.5 9H13z"/>
+          </svg>
+          Satış Tablosu İndir
+        </button>
+      </div>
+    </header>
+
+    <!-- Sayfa Router Alanı -->
+    <div class="page-container" style="flex: 1; display: flex; flex-direction: column;">
+      <router-outlet></router-outlet>
+    </div>
   </main>
 </div>

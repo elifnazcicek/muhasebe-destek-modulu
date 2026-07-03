@@ -41,4 +41,28 @@ namespace ReceiptOCR.API.Models
         [JsonPropertyName("kdv_detaylari")]
         public List<ExtractedVatDetail>? KdvDetaylari { get; set; }
     }
+
+    public class ExtractedDekontData
+    {
+        [JsonPropertyName("hesap_no")]
+        public string? HesapNo { get; set; }
+
+        [JsonPropertyName("tarih")]
+        public string? Tarih { get; set; }
+
+        [JsonPropertyName("dekont_no")]
+        public string? DekontNo { get; set; }
+
+        [JsonPropertyName("karsi_taraf")]
+        public string? KarsiTaraf { get; set; }
+
+        [JsonPropertyName("tutar")]
+        public decimal? Tutar { get; set; }
+
+        [JsonPropertyName("masraf")]
+        public decimal? Masraf { get; set; }
+
+        [JsonPropertyName("aciklama")]
+        public string? Aciklama { get; set; }
+    }
 }

@@ -32,7 +32,7 @@ export class LoginComponent implements OnInit {
 
   constructor(private router: Router, private apiService: ApiService, private cdr: ChangeDetectorRef) {
     if (localStorage.getItem('isLoggedIn') === 'true') {
-      this.router.navigate(['/dashboard']);
+      this.router.navigate(['/home']);
     }
   }
 
@@ -109,7 +109,7 @@ export class LoginComponent implements OnInit {
 
           this.loading = false;
           this.cdr.detectChanges();
-          this.router.navigate(['/dashboard']);
+          this.router.navigate(['/home']);
         } else {
           this.loading = false;
           this.errorMessage = res.error || 'Giriş başarısız.';

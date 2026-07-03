@@ -129,5 +129,105 @@ JSON Şeması:
                 throw new Exception("Fiş verisi okunamadı veya parse edilemedi.");
             }
         }
+
+        public async Task<ExtractedDekontData?> ScanDekontAsync(byte[] fileBytes, string mimeType = "image/jpeg")
+        {
+            var apiKey = _configuration["Gemini:ApiKey"];
+            var modelName = _configuration["Gemini:ModelName"] ?? "gemini-1.5-flash";
+            
+            if (string.IsNullOrEmpty(apiKey))
+            {
+                Log.Error("Gemini API Key bulunamadı!");
+                throw new Exception("Gemini API Key eksik.");
+            }
+
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/{modelName}:generateContent?key={apiKey}";
+            
+            var base64File = Convert.ToBase64String(fileBytes);
+
+            var systemPrompt = @"Sen profesyonel bir bankacılık veri giriş asistanısın. Görevin, sana gönderilen banka dekontu veya transfer makbuzu görsellerini/belgelerini analiz etmek ve bilgileri sadece belirtilen JSON formatında dönmektir. JSON dışında hiçbir açıklama veya markdown işareti yazma.
+Bu dekont veya makbuz belgesini analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uyarak çıkar:
+1. hesap_no: Bizim firmanın hesap numarası veya IBAN numarası (Dekont üzerinde 'Hesap No', 'Gönderen Hesap', 'Alıcı Hesap' veya IBAN olarak geçen ve firmamıza ait olan hesap numarası/IBAN). Genellikle TR ile başlayan IBAN veya hesap no.
+2. tarih: GG.AA.YYYY formatında işlem tarihi (Valör tarihi değil, işlemin yapıldığı asıl işlem tarihi).
+3. dekont_no: İşlem numarası, referans numarası veya dekont numarası (Ref No, İşlem No, Dekont No, Sorgu No olarak geçen numara).
+4. karsi_taraf: Parayı alan ya da gönderen karşı tarafın adı/unvanı (Bizim hesap dışındaki karşı tarafın adı/soyadı/unvanı). Gelen para ise Gönderen kişinin adı, Giden para ise Alıcı kişinin adı. Sadece karşı tarafın adı/unvanı yazılmalıdır.
+5. tutar: Gönderilen/alınan net para tutarı (Sadece sayı, örn: 12500.00 veya 450.75).
+6. masraf: İşlem için banka tarafından kesilen masraf, komisyon veya vergi tutarı (Sayı olarak, eğer dekontta masraf/komisyon belirtilmemişse veya 0 ise 0.00 yaz).
+7. aciklama: Dekont üzerinde yazan transfer açıklaması (örn: 'Maaş Ödemesi', 'Kira', 'Fatura no 123' vb.). Bulamazsan null bırak.
+
+JSON Şeması:
+{
+""hesap_no"": ""TR000000000000000000000000 veya Hesap Numarası"",
+""tarih"": ""GG.AA.YYYY"",
+""dekont_no"": ""İşlem No / Ref No / Dekont No"",
+""karsi_taraf"": ""Karşı Tarafın Adı Soyadı/Unvanı"",
+""tutar"": 1500.00,
+""masraf"": 0.00,
+""aciklama"": ""İşlem Açıklaması""
+}";
+
+            var payload = new
+            {
+                contents = new[]
+                {
+                    new
+                    {
+                        parts = new object[]
+                        {
+                            new { text = systemPrompt },
+                            new 
+                            { 
+                                inline_data = new 
+                                
+                                {
+                                    mime_type = mimeType,
+                                    data = base64File
+                                }
+                            }
+                        }
+                    }
+                },
+                generationConfig = new
+                {
+                    responseMimeType = "application/json"
+                }
+            };
+
+            var jsonPayload = JsonSerializer.Serialize(payload);
+            var content = new StringContent(jsonPayload, Encoding.UTF8, "application/json");
+
+            Log.Information("Gemini API'sine dekont tarama isteği gönderiliyor...");
+            var response = await _httpClient.PostAsync(url, content);
+            
+            var responseString = await response.Content.ReadAsStringAsync();
+
+            if (!response.IsSuccessStatusCode)
+            {
+                Log.Error("Gemini API Hatası (Dekont): {StatusCode} - {Response}", response.StatusCode, responseString);
+                throw new Exception("Gemini API dekont tarama işlemi başarısız oldu.");
+            }
+
+            try
+            {
+                var doc = JsonDocument.Parse(responseString);
+                var textResponse = doc.RootElement
+                    .GetProperty("candidates")[0]
+                    .GetProperty("content")
+                    .GetProperty("parts")[0]
+                    .GetProperty("text").GetString();
+
+                textResponse = textResponse?.Replace("```json", "").Replace("```", "").Trim();
+
+                if (string.IsNullOrEmpty(textResponse)) return null;
+
+                var result = JsonSerializer.Deserialize<ExtractedDekontData>(textResponse);
+                return result;
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Gemini dekont yanıtı parse edilemedi. Gelen veri: {Response}", responseString);
+                throw new Exception("Dekont verisi okunamadı veya parse edilemedi.");
+            }
+        }
     }
 }

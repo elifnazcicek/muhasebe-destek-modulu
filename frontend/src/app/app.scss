@@ -1,96 +1,288 @@
-.app-container {
-    max-width: 1600px;
-    margin: 0 auto;
-    padding: 20px;
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    min-height: 800px;
+/* ==========================================================================
+   MUHASEBE DESTEK MODÜLÜ - GLOBAL DÜZEN (STARK KOYU SOL MENÜ & OUTFIT FONT)
+   Açılır-Kapanır (Collapsible) Sol Menü Özelliği Entegre Edilmiştir
+   ========================================================================== */
+
+:root {
+  --color-primary: #0ea5e9;
+  --color-success: #10b981;
+  --color-danger: #ef4444;
+  --border-color: rgba(255, 255, 255, 0.4);
+  --text-main: #0f172a;
+  --text-muted: #475569;
 }
 
-.app-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 16px 24px;
-    margin-bottom: 20px;
-    background: var(--panel-bg);
-    border: 1px solid var(--panel-border);
-    border-radius: 12px;
-    box-shadow: var(--shadow-sm);
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Outfit', 'Inter', system-ui, sans-serif;
+  background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%) !important;
+  background-attachment: fixed !important;
+  color: var(--text-main);
+  overflow: hidden;
 }
 
-.header-actions {
-    display: flex;
-    align-items: center;
+/* Workspace Grid */
+.workspace-container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
 }
 
-.user-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 6px 12px;
-    background: #f8fafc; /* Slate 50 */
-    border: 1px solid var(--panel-border);
-    border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 500;
-    color: var(--text-muted);
-    margin-right: 12px;
-    box-shadow: var(--shadow-sm);
+/* Sol Dikey Menü (Sidebar) - Tek Parça Kararlı Koyu Renk (Stark Solid Color) */
+.sidebar-menu {
+  position: relative;
+  width: 260px;
+  background: #1e293b !important; /* Görseldeki gibi düz, şeffaf olmayan net koyu renk */
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s ease;
+  z-index: 100;
+  overflow: hidden;
 }
 
-.header-logo {
-    display: flex;
-    align-items: center;
-    gap: 12px;
+/* Daralmış Menü Durumu (Collapsed) - Sadece Üç Çizgi Hamburger Butonu Kalır */
+.sidebar-menu.collapsed {
+  width: 70px !important;
+  padding: 24px 8px !important;
+
+  .sidebar-logo {
+    justify-content: center;
+    padding: 0;
+    margin-bottom: 0 !important;
+  }
+
+  .btn-toggle-sidebar {
+    margin-left: 0 !important;
+    font-size: 20px !important; /* Kapalıyken buton simgesini biraz daha belirgin yap */
+  }
 }
 
-.logo-icon {
-    font-size: 2.2rem;
-    filter: drop-shadow(0 2px 4px rgba(79, 70, 229, 0.2));
+/* Sidebar Logo Başlığı */
+.sidebar-logo {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 40px;
+  padding: 0 6px;
+  position: relative;
+  transition: margin-bottom 0.2s ease;
 }
 
-.header-logo h1 {
-    font-family: 'Outfit', sans-serif;
-    font-size: 1.4rem;
-    font-weight: 700;
-    letter-spacing: -0.5px;
-    color: var(--text-main);
-    line-height: 1.2;
+.sidebar-logo .logo-icon {
+  font-size: 1.6rem;
+  font-weight: 900;
+  background: linear-gradient(135deg, #38bdf8 0%, #0d9488 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  flex-shrink: 0;
 }
 
-.header-logo p {
-    font-size: 0.78rem;
-    color: var(--text-muted);
-    margin-top: 2px;
+.logo-text h2 {
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0;
+  white-space: nowrap;
 }
 
-.app-main {
-    flex: 1;
-    min-height: 0;
-    display: flex;
-    flex-direction: column;
+.logo-text p {
+  font-size: 11px;
+  color: #94a3b8;
+  margin: 2px 0 0 0;
+  white-space: nowrap;
 }
 
-.header-nav a:hover {
-    background: rgba(0, 0, 0, 0.05);
+/* Sidebar Daraltma Hamburger Butonu */
+.btn-toggle-sidebar {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
-.header-nav a.active {
-    background: rgba(16, 185, 129, 0.1);
-    color: var(--color-primary, #10b981) !important;
-    font-weight: 600;
+.btn-toggle-sidebar:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
 }
 
-@media (max-width: 768px) {
-    .app-header {
-        flex-direction: column;
-        gap: 12px;
-        text-align: center;
-    }
-    .header-logo {
-        flex-direction: column;
-        gap: 6px;
-    }
+/* Menü Linkleri */
+.nav-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #94a3b8;
+  text-decoration: none;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 14px;
+  transition: all 0.2s ease-in-out;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Uyumsoft Aktif Seçim Rengi - Koyu Zemin Üzerinde Canlı Teal/Mavi Tonu */
+.nav-item.active {
+  background: linear-gradient(135deg, #0d9488 0%, #0ea5e9 100%) !important;
+  border: 1px solid rgba(13, 148, 136, 0.2) !important;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(13, 148, 136, 0.25) !important;
+}
+
+.nav-item .bullet-dot {
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Ana İçerik Alanı */
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+  overflow-y: auto;
+  height: 100vh;
+  box-sizing: border-box;
+}
+
+/* Sayfa Üst Başlığı (Açık Renk Glass Card) */
+.content-header {
+  position: relative; /* Docked geri butonu için konumlandırma tabanı */
+  overflow: hidden; /* Geri butonu hover efektinin cam kenarından taşmasını önler */
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(20px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(190%) !important;
+  padding: 16px 24px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 8px 32px 0 rgba(148, 163, 184, 0.1);
+  flex-shrink: 0;
+  transition: padding-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sol Kenara Docked İnce Dikey Geri Butonu (Bar Yüksekliğinde) */
+.btn-back-strip {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 48px;
+  background: rgba(0, 0, 0, 0.02);
+  border: none;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  color: var(--text-muted);
+  font-size: 20px;
+  font-weight: 800;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  outline: none;
+  border-radius: 12px 0 0 12px; /* Header kartının sol kıvrımını korur */
+}
+
+.btn-back-strip:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-main);
+}
+
+.btn-back-strip:active {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+/* Geri butonu aktifken başlıkların sağa kayması */
+.content-header.has-back-button {
+  padding-left: 72px !important;
+}
+
+.brand-tag {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #0ea5e9;
+  letter-spacing: 1px;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.header-title h1 {
+  font-size: 17px;
+  font-weight: 800;
+  color: #0f172a;
+  margin: 0;
+  transition: font-size 0.2s ease;
+}
+
+.header-title p {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 4px 0 0 0;
+  transition: font-size 0.2s ease;
+}
+
+/* Anasayfa Özel Büyütülmüş Başlık Boyutları */
+.home-title {
+  font-size: 25px !important; /* Çok daha büyük ve etkileyici anasayfa başlığı */
+  font-weight: 800;
+}
+
+.home-subtitle {
+  font-size: 15px !important; /* Daha okunaklı anasayfa açıklaması */
+  margin-top: 6px !important;
+  color: var(--text-muted) !important;
+}
+
+.header-meta {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+/* Sayfa Konteyneri */
+.page-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* Giriş Ekranı Düzeltmesi */
+.workspace-container.logged-out {
+  .main-content {
+    padding: 0;
+  }
 }

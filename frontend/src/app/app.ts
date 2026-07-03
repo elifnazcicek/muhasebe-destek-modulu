@@ -10,6 +10,7 @@ import { CommonModule } from '@angular/common';
 })
 export class App {
   protected readonly title = signal('frontend');
+  isSidebarCollapsed = signal(false); // Açılır-kapanır sol panel durumu
 
   constructor(private router: Router) {}
 
@@ -25,6 +26,10 @@ export class App {
     return localStorage.getItem('role') === 'Admin';
   }
 
+  toggleSidebar(): void {
+    this.isSidebarCollapsed.set(!this.isSidebarCollapsed());
+  }
+
   logout(): void {
     localStorage.removeItem('isLoggedIn');
     localStorage.removeItem('username');
@@ -32,9 +37,63 @@ export class App {
     this.router.navigate(['/login']);
   }
 
+  getHeaderTitle(): string {
+    const url = this.router.url;
+    if (url.includes('/home')) {
+      return 'Muhasebe Destek Modülü';
+    } else if (url.includes('/dashboard')) {
+      return 'Fiş Okuma Otomasyonu';
+    } else if (url.includes('/dekont')) {
+      return 'Uyumsoft e-Fatura Aktarımı';
+    } else if (url.includes('/users')) {
+      return 'Kullanıcı Yetki Yönetimi';
+    }
+    return 'Muhasebe Destek Modülü';
+  }
+
+  getHeaderSubtitle(): string {
+    const url = this.router.url;
+    if (url.includes('/home')) {
+      return 'Sistem Özellikleri ve Hoş Geldiniz Paneli';
+    } else if (url.includes('/dashboard')) {
+      return 'Yapay Zeka Destekli Fiş Görseli Okuma ve Veritabanı Kayıt Sistemi';
+    } else if (url.includes('/dekont')) {
+      return 'XML ve PDF Fatura/Dekont Çözümleme ve Cari Eşleştirme Paneli';
+    } else if (url.includes('/users')) {
+      return 'Sisteme Kayıtlı Personelin Roller ve Erişim Durumlarının Yönetimi';
+    }
+    return 'Uyumsoft Entegrasyonu ve Otomasyon Sistemi';
+  }
+
+  showExcelButton(): boolean {
+    const url = this.router.url;
+    return url.includes('/dashboard') || url.includes('/dekont');
+  }
+
+  isDashboardRoute(): boolean {
+    return this.router.url.includes('/dashboard');
+  }
+
+  isDekontRoute(): boolean {
+    return this.router.url.includes('/dekont');
+  }
+
+  isHomeRoute(): boolean {
+    return this.router.url.includes('/home');
+  }
+
   downloadExcel(): void {
     const username = localStorage.getItem('username') || 'default';
-    // Arkadaşın backend'inde henüz excel export olmadığı için geçici olarak yerel backend portuna yönlendiriyoruz
     window.open(`http://localhost:5000/api/receipts/export?username=${encodeURIComponent(username)}`, '_blank');
+  }
+
+  downloadAlisExcel(): void {
+    const username = localStorage.getItem('username') || 'default';
+    window.open(`http://localhost:5000/api/dekont/export-alis?username=${encodeURIComponent(username)}`, '_blank');
+  }
+
+  downloadSatisExcel(): void {
+    const username = localStorage.getItem('username') || 'default';
+    window.open(`http://localhost:5000/api/dekont/export-satis?username=${encodeURIComponent(username)}`, '_blank');
   }
 }

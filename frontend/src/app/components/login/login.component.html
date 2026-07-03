@@ -1,26 +1,25 @@
 <div class="login-wrapper">
   <div class="login-card">
     <div class="login-header">
-      <span class="logo-icon">🧾</span>
-      <h2>SmartReceipt</h2>
+      <span class="logo-icon">■</span>
+      <h2>Muhasebe Destek Modülü</h2>
       <p>{{ mode === 'login' ? 'Lütfen devam etmek için giriş yapınız' : (mode === 'register' ? 'Yeni bir kullanıcı profili oluşturun' : 'Şifrenizi sıfırlamak için kullanıcı adınızı girin') }}</p>
     </div>
 
-    <!-- Error Message -->
+    <!-- Hata Mesajı -->
     <div *ngIf="errorMessage" class="login-error-alert">
-      <span>⚠️ {{ errorMessage }}</span>
+      <span>{{ errorMessage }}</span>
     </div>
 
-    <!-- Success Message -->
+    <!-- Başarı Mesajı -->
     <div *ngIf="successMessage" class="login-success-alert">
-      <span>✓ {{ successMessage }}</span>
+      <span>{{ successMessage }}</span>
     </div>
 
     <form *ngIf="mode !== 'forgot'" (ngSubmit)="onSubmit()" class="login-form">
       <div class="form-group">
         <label for="username">Kullanıcı Adı</label>
         <div class="input-with-icon">
-          <span class="field-icon">👤</span>
           <input 
             type="text" 
             id="username" 
@@ -33,13 +32,10 @@
         </div>
       </div>
 
-
-
       <!-- E-posta Alanı (Sadece Kayıt Modunda) -->
       <div class="form-group" *ngIf="mode === 'register'">
         <label for="email">E-posta Adresi</label>
         <div class="input-with-icon">
-          <span class="field-icon">✉️</span>
           <input 
             type="email" 
             id="email" 
@@ -55,7 +51,6 @@
       <div class="form-group">
         <label for="password">Şifre</label>
         <div class="input-with-icon">
-          <span class="field-icon">🔒</span>
           <input 
             type="password" 
             id="password" 
@@ -68,11 +63,10 @@
         </div>
       </div>
 
-      <!-- Password Confirm Field (Only in Register Mode) -->
+      <!-- Şifre Tekrar Alanı (Sadece Kayıt Modunda) -->
       <div class="form-group" *ngIf="mode === 'register'">
         <label for="confirmPassword">Şifre Tekrar</label>
         <div class="input-with-icon">
-          <span class="field-icon">🔒</span>
           <input 
             type="password" 
             id="confirmPassword" 
@@ -85,7 +79,7 @@
         </div>
       </div>
 
-      <!-- Remember Me Checkbox & Forgot Password Link (Only in Login Mode) -->
+      <!-- Beni Hatırla & Şifremi Unuttum -->
       <div class="form-group-checkbox" *ngIf="mode === 'login'" style="display: flex; justify-content: space-between; align-items: center; width: 100%; gap: 10px;">
         <label class="checkbox-label" style="margin: 0;">
           <input 
@@ -96,7 +90,7 @@
           />
           <span>Beni Hatırla</span>
         </label>
-        <a (click)="switchToForgot()" class="toggle-link" style="font-size: 0.82rem; white-space: nowrap;">Şifremi Unuttum</a>
+        <a (click)="switchToForgot()" class="toggle-link" style="font-size: 0.82rem; white-space: nowrap; cursor: pointer;">Şifremi Unuttum</a>
       </div>
 
       <button type="submit" class="btn btn-primary btn-block" [disabled]="loading">
@@ -106,13 +100,12 @@
       </button>
     </form>
 
-    <!-- Forgot Password Form -->
+    <!-- Şifre Sıfırlama Formu -->
     <form *ngIf="mode === 'forgot'" (ngSubmit)="onSubmit()" class="login-form">
-      <!-- Step 1: Enter Username -->
+      <!-- Adım 1: Kullanıcı Adı Girme -->
       <div *ngIf="forgotStep === 1" class="form-group">
         <label for="forgotUsername">Kullanıcı Adı</label>
         <div class="input-with-icon">
-          <span class="field-icon">👤</span>
           <input 
             type="text" 
             id="forgotUsername" 
@@ -125,12 +118,11 @@
         </div>
       </div>
 
-      <!-- Step 2: Enter Code & New Password -->
+      <!-- Adım 2: Kod ve Yeni Şifre Girme -->
       <div *ngIf="forgotStep === 2" class="login-form" style="display: flex; flex-direction: column; gap: 16px; width: 100%;">
         <div class="form-group">
           <label for="forgotCode">Doğrulama Kodu (6 Haneli)</label>
           <div class="input-with-icon">
-            <span class="field-icon">🔑</span>
             <input 
               type="text" 
               id="forgotCode" 
@@ -147,7 +139,6 @@
         <div class="form-group">
           <label for="newPassword">Yeni Şifre</label>
           <div class="input-with-icon">
-            <span class="field-icon">🔒</span>
             <input 
               type="password" 
               id="newPassword" 
@@ -168,18 +159,18 @@
       </button>
 
       <div style="text-align: center; margin-top: 15px; border-top: 1px dashed var(--panel-border); padding-top: 15px;">
-        <a (click)="switchToLogin()" class="toggle-link" style="font-size: 0.85rem; font-weight: 600;">Giriş Ekranına Dön</a>
+        <a (click)="switchToLogin()" class="toggle-link" style="font-size: 0.85rem; font-weight: 600; cursor: pointer;">Giriş Ekranına Dön</a>
       </div>
     </form>
 
     <div *ngIf="mode !== 'forgot'" class="login-toggle-mode">
       <p *ngIf="mode === 'login'">
         Hesabınız yok mu? 
-        <a (click)="toggleMode()" class="toggle-link">Profil Oluştur</a>
+        <a (click)="toggleMode()" class="toggle-link" style="cursor: pointer;">Profil Oluştur</a>
       </p>
       <p *ngIf="mode === 'register'">
         Zaten hesabınız var mı? 
-        <a (click)="toggleMode()" class="toggle-link">Giriş Yap</a>
+        <a (click)="toggleMode()" class="toggle-link" style="cursor: pointer;">Giriş Yap</a>
       </p>
     </div>
   </div>

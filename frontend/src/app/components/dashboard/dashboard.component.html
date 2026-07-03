@@ -3,11 +3,11 @@
   <!-- ================= SOL KOLON: GÖRÜNTÜ ALMA / KAMERA / DOSYA ================= -->
   <section class="panel-section camera-section">
     <div class="panel-header" *ngIf="!showPreview">
-      <h2>📁 Fiş Görseli Yükle</h2>
+      <h2>Fiş Görseli Yükle</h2>
     </div>
     
     <div class="panel-header" *ngIf="showPreview">
-      <h2>🧾 Taranan Fiş Görseli</h2>
+      <h2>Taranan Fiş Görseli</h2>
     </div>
 
     <div class="panel-content">
@@ -18,7 +18,7 @@
              (dragenter)="onDragOver($event)"
              (dragleave)="onDragLeave($event)"
              (drop)="onDrop($event)">
-          <span class="upload-icon">☁️</span>
+          <span class="upload-icon">■</span>
           <h3>Belge Sürükleyin veya Seçin</h3>
           <p>Desteklenen formatlar: PNG, JPG, JPEG, PDF</p>
           <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 10px;">Dosya Seç</button>
@@ -38,39 +38,39 @@
                (mouseup)="endPan()"
                (mouseleave)="endPan()">
 
-          <!-- PDF Fallback Önizlemesi (Yalnızca PDF.js yüklenemezse iframe kullanılır) -->
+          <!-- PDF Fallback Önizlemesi -->
           <iframe *ngIf="previewUrl && isPdf && safePdfUrl" [src]="safePdfUrl" class="pdf-preview-frame" style="width: 100%; height: 100%; border: none; min-height: 410px;"></iframe>
           
           <!-- Zoom kontrolleri -->
           <div class="zoom-controls" *ngIf="previewUrl && (!isPdf || pdfDocument)">
-            <button type="button" class="zoom-btn" (click)="zoomIn()" title="Yakınlaştır">➕</button>
+            <button type="button" class="zoom-btn" (click)="zoomIn()" title="Yakınlaştır">+</button>
             <span class="zoom-text">{{ (zoomLevel * 100) | number:'1.0-0' }}%</span>
-            <button type="button" class="zoom-btn" (click)="zoomOut()" title="Uzaklaştır">➖</button>
-            <button type="button" class="zoom-btn" (click)="resetZoom()" title="Sıfırla">🔄</button>
+            <button type="button" class="zoom-btn" (click)="zoomOut()" title="Uzaklaştır">-</button>
+            <button type="button" class="zoom-btn" (click)="resetZoom()" title="Sıfırla">Sıfırla</button>
           </div>
         </div>
         
         <!-- PDF Sayfa Değiştirme ve Yeniden Tarama Kontrolleri -->
         <div class="pdf-nav-container" *ngIf="isPdf && pdfTotalPages > 1" style="margin-top: 15px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 12px;">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px;">
-            <button type="button" class="btn btn-secondary btn-sm" (click)="prevPdfPage()" [disabled]="pdfCurrentPage === 1">◀ Önceki Sayfa</button>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="prevPdfPage()" [disabled]="pdfCurrentPage === 1">Önceki Sayfa</button>
             <span style="font-weight: bold; color: var(--color-primary);">Sayfa {{ pdfCurrentPage }} / {{ pdfTotalPages }}</span>
-            <button type="button" class="btn btn-secondary btn-sm" (click)="nextPdfPage()" [disabled]="pdfCurrentPage === pdfTotalPages">Sonraki Sayfa ▶</button>
+            <button type="button" class="btn btn-secondary btn-sm" (click)="nextPdfPage()" [disabled]="pdfCurrentPage === pdfTotalPages">Sonraki Sayfa</button>
           </div>
           <button type="button" class="btn btn-primary btn-block btn-sm" (click)="scanActivePage()">
-            🔍 Sayfa {{ pdfCurrentPage }}'yi Tara
+            Sayfa {{ pdfCurrentPage }}'yi Tara
           </button>
         </div>
 
         <!-- PDF Tek Sayfalı ise Yeniden Tarama Butonu -->
         <div *ngIf="isPdf && pdfTotalPages === 1" style="margin-top: 10px;">
           <button type="button" class="btn btn-primary btn-block btn-sm" (click)="scanActivePage()">
-            🔍 Belgeyi Yeniden Tara
+            Belgeyi Yeniden Tara
           </button>
         </div>
 
         <button class="btn btn-secondary btn-block" (click)="resetInput()" style="margin-top: 15px;">
-          🔄 Yeni Görsel Aktar
+          Yeni Görsel Aktar
         </button>
       </div>
     </div>
@@ -79,7 +79,7 @@
   <!-- ================= ORTA KOLON: DÜZENLENEBİLİR EXCEL FORM ================= -->
   <section class="panel-section form-section">
     <div class="panel-header">
-      <h2>📝 Elde Edilen Çıktılar</h2>
+      <h2>Elde Edilen Çıktılar</h2>
       <span class="status-badge" [class.active]="merchantName !== ''">
         {{ merchantName !== '' ? 'Veri Yüklendi' : 'Girdi Bekleniyor' }}
       </span>
@@ -93,27 +93,23 @@
 
       <div class="edit-mode-indicator" *ngIf="receiptId !== null">
         <div class="edit-info">
-          <span>✏️ Kayıt Güncelleniyor (ID: <strong>#{{ receiptId }}</strong>)</span>
+          <span>Kayıt Güncelleniyor (ID: <strong>#{{ receiptId }}</strong>)</span>
         </div>
         <button type="button" class="btn btn-secondary btn-sm" (click)="cancelEdit()">İptal</button>
       </div>
-
-
 
       <form (submit)="saveReceipt(); $event.preventDefault();" id="receipt-form">
         <div class="form-row">
           <div class="form-group">
             <label for="merchant_name">Mağaza Adı</label>
             <div class="input-with-icon">
-              <span class="field-icon">🏢</span>
-              <input type="text" id="merchant_name" [(ngModel)]="merchantName" name="merchantName" required placeholder="Otomatik okunacaktır veya manuel girin" [readonly]="isInspectMode">
+              <input type="text" id="merchant_name" [(ngModel)]="merchantName" name="merchantName" required placeholder="Firma unvanı girin" [readonly]="isInspectMode">
             </div>
           </div>
           <div class="form-group">
             <label for="vkn_tckn">VKN / TCKN</label>
             <div class="input-with-icon">
-              <span class="field-icon">🆔</span>
-              <input type="text" id="vkn_tckn" [(ngModel)]="vknTckn" name="vknTckn" placeholder="Otomatik okunacaktır veya manuel girin" maxlength="11" [readonly]="isInspectMode">
+              <input type="text" id="vkn_tckn" [(ngModel)]="vknTckn" name="vknTckn" placeholder="Vergi No / TCKN" maxlength="11" [readonly]="isInspectMode">
             </div>
           </div>
         </div>
@@ -122,15 +118,13 @@
           <div class="form-group">
             <label for="receipt_date">Fiş Tarihi</label>
             <div class="input-with-icon">
-              <span class="field-icon">📅</span>
               <input type="date" id="receipt_date" [(ngModel)]="receiptDate" name="receiptDate" required [readonly]="isInspectMode">
             </div>
           </div>
           <div class="form-group">
             <label for="fis_no">Fiş No</label>
             <div class="input-with-icon">
-              <span class="field-icon">🧾</span>
-              <input type="text" id="fis_no" [(ngModel)]="fisNo" name="fisNo" placeholder="Otomatik okunacaktır veya manuel girin" [readonly]="isInspectMode">
+              <input type="text" id="fis_no" [(ngModel)]="fisNo" name="fisNo" placeholder="Fiş numarası girin" [readonly]="isInspectMode">
             </div>
           </div>
         </div>
@@ -138,8 +132,8 @@
         <!-- KDV Detay Satırları Tablosu -->
         <div class="items-container" style="margin-top: 15px; margin-bottom: 15px;">
           <div class="items-header">
-            <h3>📊 KDV Detay Satırları</h3>
-            <button type="button" class="btn btn-primary btn-xs" (click)="addItem()" [disabled]="isInspectMode">➕ Satır Ekle</button>
+            <h3>KDV Detay Satırları</h3>
+            <button type="button" class="btn btn-primary btn-xs" (click)="addItem()" [disabled]="isInspectMode">Satır Ekle</button>
           </div>
           
           <div class="table-wrapper">
@@ -173,8 +167,8 @@
                     <input type="number" class="table-input" [(ngModel)]="item.totalPrice" [name]="'total_' + idx" step="0.01" (input)="onItemChange(item, 'totalPrice')" required placeholder="0.00" [readonly]="isInspectMode">
                   </td>
                   <td style="text-align: center;">
-                    <button type="button" class="row-delete-btn" (click)="removeItem(idx)" [disabled]="items.length === 1 || isInspectMode" title="Satırı Sil" style="color: var(--color-danger); cursor: pointer; border: none; background: transparent;">
-                      🗑️
+                    <button type="button" class="row-delete-btn" (click)="removeItem(idx)" [disabled]="items.length === 1 || isInspectMode" title="Satırı Sil" style="color: var(--color-danger); cursor: pointer; border: none; background: transparent; font-size: 11px;">
+                      Sil
                     </button>
                   </td>
                 </tr>
@@ -187,25 +181,25 @@
           <div class="form-group">
             <label>Genel KDV Toplamı</label>
             <div class="input-with-icon">
-              <span class="currency-label">₺</span>
-              <input type="number" [(ngModel)]="taxAmount" name="taxAmount" class="form-input" [readonly]="isInspectMode" [style.background-color]="isInspectMode ? '#f1f5f9' : 'transparent'" [style.cursor]="isInspectMode ? 'not-allowed' : 'text'">
+              <span class="currency-label">TL</span>
+              <input type="number" [(ngModel)]="taxAmount" name="taxAmount" class="form-input" [readonly]="isInspectMode" [style.background-color]="isInspectMode ? 'rgba(0,0,0,0.02)' : 'transparent'" [style.cursor]="isInspectMode ? 'not-allowed' : 'text'">
             </div>
           </div>
           <div class="form-group">
             <label>Genel Toplam (KDV Dahil)</label>
             <div class="input-with-icon">
-              <span class="currency-label">₺</span>
-              <input type="number" [(ngModel)]="totalAmount" name="totalAmount" class="form-input" [readonly]="isInspectMode" [style.background-color]="isInspectMode ? '#f1f5f9' : 'transparent'" [style.cursor]="isInspectMode ? 'not-allowed' : 'text'">
+              <span class="currency-label">TL</span>
+              <input type="number" [(ngModel)]="totalAmount" name="totalAmount" class="form-input" [readonly]="isInspectMode" [style.background-color]="isInspectMode ? 'rgba(0,0,0,0.02)' : 'transparent'" [style.cursor]="isInspectMode ? 'not-allowed' : 'text'">
             </div>
           </div>
         </div>
 
         <div style="display: flex; gap: 10px;">
           <button *ngIf="!isInspectMode" type="submit" class="btn btn-accent btn-block" [disabled]="!merchantName || !totalAmount || loading || isScanning">
-            💾 {{ receiptId ? 'Veritabanındaki Kaydı Güncelle' : 'Veritabanına Kalıcı Kaydet' }}
+            {{ receiptId ? 'Kaydı Güncelle' : 'Veritabanına Kaydet' }}
           </button>
           <button *ngIf="isInspectMode" type="button" class="btn btn-secondary btn-block" (click)="cancelInspect()" style="background-color: #0ea5e9; border: none; color: white;">
-            👁️ İncelemeyi Kapat
+            İncelemeyi Kapat
           </button>
         </div>
       </form>
@@ -215,9 +209,9 @@
   <!-- ================= SAĞ KOLON: VERİ ARŞİVİ ================= -->
   <section class="panel-section list-section">
     <div class="panel-header" style="margin-bottom: 0px; border-bottom: 1px solid var(--panel-border);">
-      <h2>📁 Veri Arşivi</h2>
-      <button class="btn btn-circle" (click)="fetchReceiptsList()" title="Yenile" style="margin-left: auto; width: 30px; height: 30px; font-size: 0.8rem; padding: 0;">
-        🔄
+      <h2>Veri Arşivi</h2>
+      <button class="btn btn-circle" (click)="fetchReceiptsList()" title="Yenile" style="margin-left: auto; width: 50px; height: 26px; font-size: 11px; padding: 0; border-radius: 4px;">
+        Yenile
       </button>
     </div>
 
@@ -242,11 +236,11 @@
           <div class="archive-card" *ngFor="let r of filteredReceipts">
             <div class="card-top">
               <span class="card-date">{{ r.receiptDate }}</span>
-              <span style="font-size: 0.75rem; opacity: 0.6; margin-left: auto;">✍️ {{ r.createdBy }}</span>
+              <span style="font-size: 10px; opacity: 0.7; margin-left: auto;">Oluşturan: {{ r.createdBy }}</span>
             </div>
             <div class="card-merchant">{{ r.merchantName }}</div>
             <div class="card-bottom" style="display: flex; gap: 5px; align-items: center; justify-content: space-between;">
-              <div class="card-total">₺{{ r.totalAmount | number:'1.2-2' }}</div>
+              <div class="card-total">TL {{ r.totalAmount | number:'1.2-2' }}</div>
               <div style="display: flex; gap: 4px;">
                 <button *ngIf="r.createdBy === currentUsername || currentUserRole === 'Admin'" class="btn btn-primary btn-xs" (click)="loadReceiptForEdit(r.id)">Düzenle</button>
                 <button *ngIf="r.createdBy !== currentUsername && currentUserRole !== 'Admin'" class="btn btn-secondary btn-xs" style="background-color: #0ea5e9; border: none; color: white;" (click)="loadReceiptForInspect(r.id)">İncele</button>

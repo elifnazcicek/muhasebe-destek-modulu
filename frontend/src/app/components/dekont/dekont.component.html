@@ -1,0 +1,172 @@
+<div class="workspace-grid">
+  
+  <!-- ================= SOL PANEL: UYUMSOFT FATURA GÖRSELİ ================= -->
+  <section class="app-panel">
+    <div class="panel-header">
+      <h3>Fatura Önizleme</h3>
+      <span *ngIf="showPreview" class="user-tag" style="background-color: rgba(0, 0, 0, 0.05); color: #475569; border: 1px solid rgba(0, 0, 0, 0.08); font-size: 11px; padding: 3px 6px; border-radius: 4px;">
+        {{ isPdf ? 'PDF Belgesi' : 'UBL-TR XML' }}
+      </span>
+    </div>
+    
+    <div class="panel-body">
+      <!-- Belge Sürükle-Bırak Alanı -->
+      <div class="upload-placeholder" *ngIf="!showPreview"
+           (click)="fileInput.click()"
+           [class.drag-active]="isDragOver"
+           (dragover)="onDragOver($event)"
+           (dragleave)="onDragLeave($event)"
+           (drop)="onDrop($event)">
+        <span class="icon">■</span>
+        <h4>Uyumsoft XML veya PDF Belgesini Buraya Sürükleyin</h4>
+        <p>Desteklenen formatlar: UBL-TR XML, PDF Fatura/Dekont</p>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 12px;">Dosya Seç</button>
+        <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xml,.pdf" style="display: none;" />
+      </div>
+
+      <!-- Yüklenen Dosyanın PDF/HTML Önizlemesi -->
+      <div class="pdf-container" *ngIf="showPreview" style="flex: 1; display: flex; flex-direction: column;">
+        <iframe *ngIf="isPdf && safePdfUrl" [src]="safePdfUrl" class="pdf-frame"></iframe>
+        
+        <!-- XML HTML Görselleştirici -->
+        <div *ngIf="!isPdf && htmlPreviewContent" [innerHTML]="htmlPreviewContent" style="width: 100%; height: 100%; overflow: auto; background-color: #ffffff; padding: 12px; border-radius: 6px;"></div>
+        
+        <div *ngIf="!isPdf && !htmlPreviewContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #64748b; text-align: center; padding: 20px;">
+          <h4>XML Fatura Çözümlendi</h4>
+          <p>Detayları sağdaki formdan inceleyebilirsiniz.</p>
+        </div>
+      </div>
+
+      <!-- PDF Sayfa Kontrolleri -->
+      <div class="pdf-controls" *ngIf="showPreview && isPdf && pdfTotalPages > 1">
+        <button type="button" class="btn btn-secondary btn-sm" (click)="prevPdfPage()" [disabled]="pdfCurrentPage === 1">Önceki</button>
+        <span style="font-size: 11px; font-weight: 600;">Sayfa {{ pdfCurrentPage }} / {{ pdfTotalPages }}</span>
+        <button type="button" class="btn btn-secondary btn-sm" (click)="nextPdfPage()" [disabled]="pdfCurrentPage === pdfTotalPages">Sonraki</button>
+      </div>
+
+      <button *ngIf="showPreview" class="btn btn-secondary btn-block btn-sm" (click)="resetInput()" style="margin-top: 12px;">
+        Yeni Dosya Yükle
+      </button>
+    </div>
+  </section>
+
+  <!-- ================= SAĞ PANEL: DETAY FORMU ================= -->
+  <section class="app-panel">
+    <div class="panel-header">
+      <h3>Fatura Detaylarını Girin</h3>
+      <span class="validation-badge" [class.success]="isCariValid" [class.error]="!isCariValid && VKN !== ''" style="padding: 3px 6px; font-weight: 700; font-size: 10px;">
+        {{ isCariValid ? 'Eşleşti' : (VKN !== '' ? 'Cari Kayıt Bulunamadı' : 'Dosya Bekleniyor') }}
+      </span>
+    </div>
+
+    <div class="panel-body">
+      <!-- Durum Uyarısı -->
+      <div *ngIf="statusMessage" class="status-alert" [ngClass]="statusType" style="margin-bottom: 12px;">
+        <div class="spinner" *ngIf="loading && statusType === 'info'"></div>
+        <span>{{ statusMessage }}</span>
+      </div>
+
+      <form style="display: flex; flex-direction: column; flex: 1;">
+        
+        <!-- Üst Grid Alanı -->
+        <div class="form-grid" style="margin-bottom: 16px;">
+          <div class="form-group">
+            <label for="belge_no">Belge No</label>
+            <input type="text" id="belge_no" class="form-input-clean" [(ngModel)]="belgeNo" name="belgeNo" required placeholder="Fatura numarası girin" />
+          </div>
+          
+          <div class="form-group">
+            <label for="fatura_tarihi">Fatura Tarihi</label>
+            <input type="date" id="fatura_tarihi" class="form-input-clean" [(ngModel)]="tarih" name="tarih" required />
+          </div>
+
+          <div class="form-group">
+            <label for="cari_adi">Tedarikçi</label>
+            <div style="display: flex; gap: 6px; align-items: center;">
+              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" placeholder="Firma unvanı girin" required style="flex: 1;" />
+              <button type="button" class="btn btn-secondary btn-sm" (click)="searchAndMatchCari()" style="padding: 8px 10px;">Ara</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="toplam_tutar">Toplam Tutar</label>
+            <div style="position: relative; display: flex; align-items: center;">
+              <span style="position: absolute; left: 10px; font-weight: 700; color: #475569;">TL</span>
+              <input type="text" id="toplam_tutar" class="form-input-clean" [value]="genelToplam | number:'1.2-2'" readonly style="padding-left: 28px; font-weight: 700; color: #0284c7;" />
+            </div>
+          </div>
+          
+          <!-- Mikro Cari Kodu ve VKN Alanları -->
+          <div class="form-group-full" style="display: flex; gap: 12px; background-color: rgba(255, 255, 255, 0.4); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.05); font-size: 11px; font-weight: 600;">
+            <div>VKN/TCKN: <strong style="color: #0f172a;">{{ VKN || '-' }}</strong></div>
+            <div>Mikro C/H Kodu: <strong [style.color]="isCariValid ? '#059669' : '#e11d48'">{{ cariKodu || 'Eksik (Kart Açılmalı)' }}</strong></div>
+            <button type="button" *ngIf="!isCariValid && VKN !== ''" class="btn btn-success btn-xs" (click)="createCariCard()" style="margin-left: auto; padding: 2px 6px;">
+              Cari Kartı Oluştur
+            </button>
+          </div>
+        </div>
+
+        <!-- İşlem Satırları Grid Tablosu -->
+        <div style="flex: 1; display: flex; flex-direction: column; margin-bottom: 16px;">
+          <div class="grid-table-container" style="flex: 1; max-height: 220px; overflow-y: auto;">
+            <table class="grid-table-clean">
+              <thead>
+                <tr>
+                  <th style="width: 40%">Hizmet/Ürün</th>
+                  <th style="width: 12%; text-align: center;">Miktar</th>
+                  <th style="width: 18%; text-align: right;">Birim Fiyat</th>
+                  <th style="width: 15%; text-align: center;">KDV (%)</th>
+                  <th style="width: 15%; text-align: right;">Toplam</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let item of invoiceLines; let i = index">
+                  <td>
+                    <input type="text" class="table-input-clean" [(ngModel)]="item.ismi" [name]="'ismi_' + i" placeholder="Hizmet veya Stok Adı" required />
+                  </td>
+                  <td style="text-align: center;">
+                    <input type="number" class="table-input-clean" [(ngModel)]="item.miktar" [name]="'miktar_' + i" (input)="calculateTotals()" min="1" style="text-align: center;" />
+                  </td>
+                  <td style="text-align: right;">
+                    <input type="number" class="table-input-clean" [(ngModel)]="item.birimFiyat" [name]="'fiyat_' + i" (input)="calculateTotals()" step="0.01" style="text-align: right;" />
+                  </td>
+                  <td style="text-align: center;">
+                    <input type="number" class="table-input-clean" [(ngModel)]="item.kdvOrani" [name]="'kdv_' + i" (input)="calculateTotals()" min="0" max="100" style="text-align: center;" />
+                  </td>
+                  <td style="text-align: right; font-weight: 700; color: #334155; padding-right: 10px;">
+                    {{ (item.miktar * item.birimFiyat * (1 + item.kdvOrani / 100)) | number:'1.2-2' }}
+                  </td>
+                </tr>
+                <tr *ngIf="invoiceLines.length === 0">
+                  <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">
+                    Uyumsoft XML/PDF belgesi yüklendiğinde satır detayları burada listelenecektir.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          
+          <!-- Satır Ekleme Butonu -->
+          <button type="button" class="btn-outline-blue" (click)="addNewLine()" [disabled]="VKN === ''" style="align-self: flex-start; margin-top: 10px;">
+            + Satır Ekle
+          </button>
+        </div>
+
+        <!-- Alt Aksiyon Butonları - Alış / Satış Olarak İki Ayrı Kaydetme Butonu (Aynı Renkte - btn-primary) -->
+        <div style="display: flex; gap: 12px; margin-top: auto;">
+          <button type="button" class="btn btn-secondary" (click)="addNewLine()" [disabled]="VKN === ''" style="flex: 0.8;">
+            Satır Ekle
+          </button>
+          <button type="button" class="btn btn-primary" style="flex: 1.1;" (click)="saveAs('Alis')" [disabled]="!isCariValid || VKN === '' || loading">
+            Alış Olarak Kaydet
+          </button>
+          <button type="button" class="btn btn-primary" style="flex: 1.1;" (click)="saveAs('Satis')" [disabled]="!isCariValid || VKN === '' || loading">
+            Satış Olarak Kaydet
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </section>
+
+</div>
