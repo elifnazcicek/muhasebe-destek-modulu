@@ -610,10 +610,11 @@ public class DekontController : ControllerBase
                 if (rawCariKod.ToLowerInvariant().Contains("kod") || rawCariAdi.ToLowerInvariant().Contains("ünvan") || rawCariAdi.ToLowerInvariant().Contains("unvan"))
                     continue;
 
-                // 2. Mikro'da bu cari_kod var mı kontrol et
-                var checkCmdText = "SELECT COUNT(*) FROM CARI_HESAPLAR WHERE cari_kod = @kod";
+                // 2. Mikro'da bu cari_kod veya cari_unvan1 var mı kontrol et (Mükerrer kaydı önle)
+                var checkCmdText = "SELECT COUNT(*) FROM CARI_HESAPLAR WHERE cari_kod = @kod OR LTRIM(RTRIM(UPPER(cari_unvan1))) = LTRIM(RTRIM(UPPER(@unvan)))";
                 using var checkCmd = new SqlCommand(checkCmdText, conn);
                 checkCmd.Parameters.AddWithValue("@kod", rawCariKod);
+                checkCmd.Parameters.AddWithValue("@unvan", rawCariAdi.Trim());
                 var exists = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
 
                 if (!exists)
@@ -651,9 +652,9 @@ public class DekontController : ControllerBase
     [HttpPost("create-cari")]
     public async Task<IActionResult> CreateCari([FromBody] CreateCariRequest request)
     {
-        if (string.IsNullOrEmpty(request.Vkn) || string.IsNullOrEmpty(request.CariAdi))
+        if (string.IsNullOrEmpty(request.CariAdi))
         {
-            return BadRequest(ApiResponse<object>.Fail("VKN ve Cari Unvanı zorunludur."));
+            return BadRequest(ApiResponse<object>.Fail("Cari Unvanı zorunludur."));
         }
 
         try
@@ -661,7 +662,38 @@ public class DekontController : ControllerBase
             using var conn = new SqlConnection(ConnectionString);
             await conn.OpenAsync();
 
-            // 1. Son kullanılan Cari kodunu alarak yeni bir kod üret (Örn: 120.01.XXX)
+            // 1. Ünvan mükerrer kontrolü (Case-insensitive, Trimmed)
+            var checkNameCmdText = "SELECT COUNT(*) FROM CARI_HESAPLAR WHERE LTRIM(RTRIM(UPPER(cari_unvan1))) = LTRIM(RTRIM(UPPER(@unvan)))";
+            using (var checkNameCmd = new SqlCommand(checkNameCmdText, conn))
+            {
+                checkNameCmd.Parameters.AddWithValue("@unvan", request.CariAdi.Trim());
+                var nameExists = (int)(await checkNameCmd.ExecuteScalarAsync() ?? 0) > 0;
+                if (nameExists)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bu Cari Ünvanı ile kayıtlı bir cari zaten var."));
+                }
+            }
+
+            // 2. VKN/TCKN mükerrer kontrolü (eğer girilmişse)
+            if (!string.IsNullOrEmpty(request.Vkn))
+            {
+                var cleanVkn = new string(request.Vkn.Where(char.IsDigit).ToArray());
+                if (!string.IsNullOrEmpty(cleanVkn))
+                {
+                    var checkVknCmdText = "SELECT COUNT(*) FROM CARI_HESAPLAR WHERE cari_vkn = @vkn OR cari_tckn = @vkn";
+                    using (var checkVknCmd = new SqlCommand(checkVknCmdText, conn))
+                    {
+                        checkVknCmd.Parameters.AddWithValue("@vkn", cleanVkn);
+                        var vknExists = (int)(await checkVknCmd.ExecuteScalarAsync() ?? 0) > 0;
+                        if (vknExists)
+                        {
+                            return BadRequest(ApiResponse<object>.Fail("Bu VKN/TCKN ile kayıtlı bir cari zaten var."));
+                        }
+                    }
+                }
+            }
+
+            // 3. Son kullanılan Cari kodunu alarak yeni bir kod üret (Örn: 120.01.XXX)
             string nextCariKod = "120.01.001";
             var selectCmdText = "SELECT TOP 1 cari_kod FROM CARI_HESAPLAR WHERE cari_kod LIKE '120.01.%' ORDER BY cari_kod DESC";
             
@@ -678,7 +710,7 @@ public class DekontController : ControllerBase
                 }
             }
 
-            // 2. Mikro CARI_HESAPLAR tablosuna yeni cariyi ekle
+            // 4. Mikro CARI_HESAPLAR tablosuna yeni cariyi ekle
             var insertCmdText = @"
                 INSERT INTO CARI_HESAPLAR (cari_kod, cari_unvan1, cari_vkn, cari_tckn, cari_Doviz_Cinsi, cari_created_date) 
                 VALUES (@kod, @unvan, @vkn, @tckn, 0, GETDATE())";
@@ -686,16 +718,25 @@ public class DekontController : ControllerBase
             using (var insertCmd = new SqlCommand(insertCmdText, conn))
             {
                 insertCmd.Parameters.AddWithValue("@kod", nextCariKod);
-                insertCmd.Parameters.AddWithValue("@unvan", request.CariAdi);
-                if (request.Vkn.Length == 11)
+                insertCmd.Parameters.AddWithValue("@unvan", request.CariAdi.Trim());
+                if (string.IsNullOrEmpty(request.Vkn))
                 {
                     insertCmd.Parameters.AddWithValue("@vkn", DBNull.Value);
-                    insertCmd.Parameters.AddWithValue("@tckn", request.Vkn);
+                    insertCmd.Parameters.AddWithValue("@tckn", DBNull.Value);
                 }
                 else
                 {
-                    insertCmd.Parameters.AddWithValue("@vkn", request.Vkn);
-                    insertCmd.Parameters.AddWithValue("@tckn", DBNull.Value);
+                    var cleanVkn = new string(request.Vkn.Where(char.IsDigit).ToArray());
+                    if (cleanVkn.Length == 11)
+                    {
+                        insertCmd.Parameters.AddWithValue("@vkn", DBNull.Value);
+                        insertCmd.Parameters.AddWithValue("@tckn", cleanVkn);
+                    }
+                    else
+                    {
+                        insertCmd.Parameters.AddWithValue("@vkn", cleanVkn);
+                        insertCmd.Parameters.AddWithValue("@tckn", DBNull.Value);
+                    }
                 }
 
                 await insertCmd.ExecuteNonQueryAsync();
