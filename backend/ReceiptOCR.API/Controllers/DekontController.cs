@@ -73,6 +73,17 @@ public class DekontController : ControllerBase
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'OdenecekTutar')
                 BEGIN
                     ALTER TABLE Dekonts ADD OdenecekTutar DECIMAL(18,2) NOT NULL DEFAULT 0.0;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CARI_HESAPLAR]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE CARI_HESAPLAR (
+                        cari_kod NVARCHAR(50) PRIMARY KEY,
+                        cari_unvan1 NVARCHAR(250) NOT NULL,
+                        cari_vkn NVARCHAR(50) NULL,
+                        cari_tckn NVARCHAR(50) NULL,
+                        cari_Doviz_Cinsi INT NULL,
+                        cari_created_date DATETIME NULL
+                    );
                 END", conn);
             cmd.ExecuteNonQuery();
         }
@@ -192,7 +203,7 @@ public class DekontController : ControllerBase
                         pdfLines.Add(new ParsedInvoiceLine
                         {
                             Cinsi = "Hizmet",
-                            Kodu = line.MalzemeHizmetKodu ?? "760.01.001",
+                            Kodu = line.MalzemeHizmetKodu ?? "",
                             Ismi = line.MalzemeHizmetAdi ?? "Hizmet Bedeli",
                             Tutar = (double)line.NetTutar,
                             KdvOrani = line.KdvOrani,
@@ -211,7 +222,7 @@ public class DekontController : ControllerBase
                     pdfLines.Add(new ParsedInvoiceLine
                     { 
                         Cinsi = "Hizmet", 
-                        Kodu = "760.01.001", 
+                        Kodu = "", 
                         Ismi = !string.IsNullOrEmpty(scanResult.Aciklama) ? scanResult.Aciklama : "Banka Transfer Bedeli", 
                         Tutar = (double)(scanResult.Tutar ?? 0.00m), 
                         KdvOrani = 0,
