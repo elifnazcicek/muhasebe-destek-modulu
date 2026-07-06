@@ -535,6 +535,147 @@ public class DekontController : ControllerBase
     }
 
     /// <summary>
+    /// Excel dosyasından (Cari Adı, VKN/TCKN) cari kartı listesi çözümler ve Mikro CARI_HESAPLAR tablosuna kaydeder.
+    /// </summary>
+    [HttpPost("parse-excel-cari")]
+    public async Task<IActionResult> ParseExcelCari(IFormFile file)
+    {
+        _logger.LogInformation("[API] Excel Cari Yükleme isteği alındı. Dosya: {FileName}", file?.FileName);
+
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail("Lütfen geçerli bir dosya yükleyiniz."));
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
+        {
+            return BadRequest(ApiResponse<object>.Fail("Yalnızca Excel (.xlsx, .xls) dosyaları desteklenmektedir."));
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            using var workbook = new XLWorkbook(stream);
+            var worksheet = workbook.Worksheets.FirstOrDefault();
+            if (worksheet == null)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Excel dosyasında çalışma sayfası bulunamadı."));
+            }
+
+            var rows = worksheet.RowsUsed().ToList();
+            if (rows.Count <= 1)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Excel dosyasında veri satırı bulunamadı."));
+            }
+
+            // Kolon başlıklarını tespit etmeye çalış
+            var firstRow = rows.First();
+            int unvanCol = -1;
+            int vknCol = -1;
+
+            // İlk satırı tarayarak başlıkları eşleştir
+            foreach (var cell in firstRow.Cells())
+            {
+                var val = cell.Value.ToString().Trim().ToLowerInvariant();
+                if (val.Contains("unvan") || val.Contains("ad") || val.Contains("company") || val.Contains("müşteri") || val.Contains("satıcı") || val.Contains("cari"))
+                {
+                    unvanCol = cell.Address.ColumnNumber;
+                }
+                else if (val.Contains("vkn") || val.Contains("tckn") || val.Contains("vergi") || val.Contains("t.c.") || val.Contains("tax"))
+                {
+                    vknCol = cell.Address.ColumnNumber;
+                }
+            }
+
+            // Başlık bulunamadıysa varsayılan sütun atamaları (1: Unvan, 2: VKN)
+            if (unvanCol == -1) unvanCol = 1;
+            if (vknCol == -1) vknCol = 2;
+
+            int addedCount = 0;
+            var addedCaris = new List<object>();
+
+            using var conn = new SqlConnection(ConnectionString);
+            await conn.OpenAsync();
+
+            // İkinci satırdan itibaren oku
+            for (int r = 2; r <= rows.Count; r++)
+            {
+                var row = worksheet.Row(r);
+                var rawCariAdi = row.Cell(unvanCol).Value.ToString().Trim();
+                var rawVkn = row.Cell(vknCol).Value.ToString().Trim();
+
+                if (string.IsNullOrEmpty(rawCariAdi) || string.IsNullOrEmpty(rawVkn))
+                    continue;
+
+                // VKN sayısal temizliği yap (boşlukları, tireleri kaldır)
+                var cleanVkn = new string(rawVkn.Where(char.IsDigit).ToArray());
+                if (cleanVkn.Length != 10 && cleanVkn.Length != 11)
+                {
+                    _logger.LogWarning("Geçersiz VKN formatı, atlanıyor: Row {Row}, VKN {Vkn}", r, rawVkn);
+                    continue;
+                }
+
+                // 2. Mikro'da bu VKN/TCKN var mı kontrol et
+                var checkCmdText = "SELECT COUNT(*) FROM CARI_HESAPLAR WHERE cari_vkn = @vkn OR cari_tckn = @vkn";
+                using var checkCmd = new SqlCommand(checkCmdText, conn);
+                checkCmd.Parameters.AddWithValue("@vkn", cleanVkn);
+                var exists = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
+
+                if (!exists)
+                {
+                    // Yeni kod üret
+                    string nextCariKod = "120.01.001";
+                    var selectCmdText = "SELECT TOP 1 cari_kod FROM CARI_HESAPLAR WHERE cari_kod LIKE '120.01.%' ORDER BY cari_kod DESC";
+                    using (var selectCmd = new SqlCommand(selectCmdText, conn))
+                    {
+                        var lastCode = await selectCmd.ExecuteScalarAsync() as string;
+                        if (!string.IsNullOrEmpty(lastCode))
+                        {
+                            var lastNumStr = lastCode.Split('.').Last();
+                            if (int.TryParse(lastNumStr, out int num))
+                            {
+                                nextCariKod = $"120.01.{(num + 1):D3}";
+                            }
+                        }
+                    }
+
+                    // Ekle
+                    var insertCmdText = @"
+                        INSERT INTO CARI_HESAPLAR (cari_kod, cari_unvan1, cari_vkn, cari_tckn, cari_Doviz_Cinsi, cari_created_date) 
+                        VALUES (@kod, @unvan, @vkn, @tckn, 0, GETDATE())";
+                    
+                    using (var insertCmd = new SqlCommand(insertCmdText, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@kod", nextCariKod);
+                        insertCmd.Parameters.AddWithValue("@unvan", rawCariAdi);
+                        if (cleanVkn.Length == 11)
+                        {
+                            insertCmd.Parameters.AddWithValue("@vkn", DBNull.Value);
+                            insertCmd.Parameters.AddWithValue("@tckn", cleanVkn);
+                        }
+                        else
+                        {
+                            insertCmd.Parameters.AddWithValue("@vkn", cleanVkn);
+                            insertCmd.Parameters.AddWithValue("@tckn", DBNull.Value);
+                        }
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    addedCount++;
+                    addedCaris.Add(new { cariKodu = nextCariKod, cariAdi = rawCariAdi });
+                }
+            }
+
+            return Ok(ApiResponse<object>.Ok(new { addedCount = addedCount, addedCaris = addedCaris }, $"{addedCount} adet yeni cari kartı başarıyla yüklendi ve oluşturuldu."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Excel cari listesi yüklenirken hata oluştu.");
+            return StatusCode(500, ApiResponse<object>.Fail("Excel dosyası okunurken bir hata oluştu: " + ex.Message));
+        }
+    }
+
+    /// <summary>
     /// Mikro SQL veritabanında yeni cari hesabı açar.
     /// </summary>
     [HttpPost("create-cari")]

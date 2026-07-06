@@ -123,59 +123,84 @@ export class CariKayitlariComponent implements OnInit {
     const file: File = event.target.files[0];
     if (!file) return;
 
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    
     this.loading = true;
     this.showStatus('Dosya yükleniyor ve cari bilgileri çözümleniyor...', 'info', 0);
 
     const formData = new FormData();
     formData.append('file', file);
 
-    this.http.post<any>(`${this.baseUrl}/parse-xml`, formData).subscribe({
-      next: (res) => {
-        if (res.success && res.data) {
-          const extractedVkn = res.data.vkn;
-          const extractedCariAdi = res.data.cariAdi;
-
-          if (!extractedVkn || !extractedCariAdi) {
-            this.loading = false;
-            this.showStatus('Dosyada geçerli VKN veya Cari Ünvanı bulunamadı.', 'error', 5000);
-            return;
-          }
-
-          // Cariyi kaydet
-          this.showStatus(`Cari bilgileri tespit edildi. Kart oluşturuluyor: ${extractedCariAdi} (${extractedVkn})`, 'info', 0);
-          const payload = {
-            vkn: extractedVkn,
-            cariAdi: extractedCariAdi
-          };
-
-          this.http.post<any>(`${this.baseUrl}/create-cari`, payload).subscribe({
-            next: (createRes) => {
-              this.loading = false;
-              if (createRes.success) {
-                this.showStatus(`Dosyadaki cari başarıyla veritabanına kaydedildi: ${extractedCariAdi}`, 'success', 6000);
-                this.fetchCaris();
-              } else {
-                this.showStatus(createRes.message || 'Cari oluşturulamadı.', 'error');
-              }
-              this.cdr.detectChanges();
-            },
-            error: (createErr) => {
-              this.loading = false;
-              this.showStatus(createErr.error?.message || 'Tespit edilen cari oluşturulurken hata oluştu.', 'error');
-              this.cdr.detectChanges();
-            }
-          });
-        } else {
+    if (ext === 'xlsx' || ext === 'xls') {
+      // Excel Çözümleme
+      this.http.post<any>(`${this.baseUrl}/parse-excel-cari`, formData).subscribe({
+        next: (res) => {
           this.loading = false;
-          this.showStatus(res.message || 'Dosya okunamadı.', 'error');
+          if (res.success && res.data) {
+            const count = res.data.addedCount;
+            this.showStatus(`Excel başarıyla okundu! ${count} adet yeni cari veritabanına eklendi.`, 'success', 6000);
+            this.fetchCaris();
+          } else {
+            this.showStatus(res.message || 'Excel dosyası işlenemedi.', 'error');
+          }
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.showStatus(err.error?.message || 'Excel dosyası işlenirken hata oluştu.', 'error');
+          this.cdr.detectChanges();
         }
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        this.loading = false;
-        this.showStatus(err.error?.message || 'Dosya okuma/çözümleme hatası.', 'error');
-        this.cdr.detectChanges();
-      }
-    });
+      });
+    } else {
+      // XML / PDF / Görsel Çözümleme
+      this.http.post<any>(`${this.baseUrl}/parse-xml`, formData).subscribe({
+        next: (res) => {
+          if (res.success && res.data) {
+            const extractedVkn = res.data.vkn;
+            const extractedCariAdi = res.data.cariAdi;
+
+            if (!extractedVkn || !extractedCariAdi) {
+              this.loading = false;
+              this.showStatus('Dosyada geçerli VKN veya Cari Ünvanı bulunamadı.', 'error', 5000);
+              return;
+            }
+
+            // Cariyi kaydet
+            this.showStatus(`Cari bilgileri tespit edildi. Kart oluşturuluyor: ${extractedCariAdi} (${extractedVkn})`, 'info', 0);
+            const payload = {
+              vkn: extractedVkn,
+              cariAdi: extractedCariAdi
+            };
+
+            this.http.post<any>(`${this.baseUrl}/create-cari`, payload).subscribe({
+              next: (createRes) => {
+                this.loading = false;
+                if (createRes.success) {
+                  this.showStatus(`Dosyadaki cari başarıyla veritabanına kaydedildi: ${extractedCariAdi}`, 'success', 6000);
+                  this.fetchCaris();
+                } else {
+                  this.showStatus(createRes.message || 'Cari oluşturulamadı.', 'error');
+                }
+                this.cdr.detectChanges();
+              },
+              error: (createErr) => {
+                this.loading = false;
+                this.showStatus(createErr.error?.message || 'Tespit edilen cari oluşturulurken hata oluştu.', 'error');
+                this.cdr.detectChanges();
+              }
+            });
+          } else {
+            this.loading = false;
+            this.showStatus(res.message || 'Dosya okunamadı.', 'error');
+          }
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          this.loading = false;
+          this.showStatus(err.error?.message || 'Dosya okuma/çözümleme hatası.', 'error');
+          this.cdr.detectChanges();
+        }
+      });
+    }
   }
 }
