@@ -415,9 +415,7 @@ public class DekontController : ControllerBase
 
             foreach (var el in lineElements)
             {
-                var itemCode = el.Element(cac + "Item")?.Element(cac + "SellersItemIdentification")?.Element(cbc + "ID")?.Value 
-                            ?? el.Element(cac + "Item")?.Element(cac + "BuyersItemIdentification")?.Element(cbc + "ID")?.Value 
-                            ?? "";
+                var itemCode = "";
                 var itemName = el.Element(cac + "Item")?.Element(cac + "Name")?.Value ?? "Hizmet Satırı";
                 var qtyStr = el.Element(cbc + "InvoicedQuantity")?.Value ?? "1";
                 var priceStr = el.Element(cac + "Price")?.Element(cbc + "PriceAmount")?.Value ?? "0";
