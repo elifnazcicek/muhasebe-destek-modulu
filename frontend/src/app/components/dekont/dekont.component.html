@@ -97,38 +97,25 @@
           </div>
 
           <div class="form-group">
-            <label for="detected_type">Fatura Tipi (Tespit Edilen)</label>
+            <label for="detected_type">Fatura Tipi (Evrak Tipi)</label>
             <select id="detected_type" class="form-input-clean" [(ngModel)]="detectedType" name="detectedType" style="height: 40px; font-size: 14px;">
-              <option value="Alis">Alış Faturası</option>
-              <option value="Satis">Satış Faturası</option>
+              <option value="Alis">Alış Faturası (Girdi)</option>
+              <option value="Satis">Satış Faturası (Çıktı)</option>
             </select>
           </div>
 
           <div class="form-group">
-            <label for="odeme_tipi">Ödeme Tipi</label>
-            <input type="text" id="odeme_tipi" class="form-input-clean" [(ngModel)]="odemeTipi" name="odemeTipi" required placeholder="Örn: Açık Hesap, Nakit" />
-          </div>
-
-          <div class="form-group">
-            <label for="cari_adi">{{ detectedType === 'Alis' ? 'Tedarikçi' : 'Müşteri' }}</label>
+            <label for="cari_adi">Tedarikçi (Cari Ünvanı)</label>
             <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" [placeholder]="detectedType === 'Alis' ? 'Tedarikçi unvanı' : 'Müşteri unvanı'" required style="flex: 1;" />
+              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" placeholder="Tedarikçi unvanı" required style="flex: 1;" />
               <button type="button" class="btn btn-secondary btn-sm" (click)="searchAndMatchCari()" style="padding: 8px 10px;">Ara</button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label for="toplam_tutar">Toplam Tutar</label>
-            <div style="position: relative; display: flex; align-items: center;">
-              <span style="position: absolute; left: 10px; font-weight: 700; color: #475569;">₺</span>
-              <input type="text" id="toplam_tutar" class="form-input-clean" [value]="genelToplam | number:'1.2-2'" readonly style="padding-left: 28px; font-weight: 700; color: #0284c7;" />
             </div>
           </div>
           
           <!-- Mikro Cari Kodu ve VKN Alanları -->
           <div class="form-group-full" style="display: flex; gap: 12px; background-color: rgba(255, 255, 255, 0.4); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.05); font-size: 11px; font-weight: 600;">
             <div>VKN/TCKN: <strong style="color: #0f172a;">{{ VKN || '-' }}</strong></div>
-            <div>Mikro C/H Kodu: <strong [style.color]="isCariValid ? '#059669' : '#e11d48'">{{ cariKodu || 'Eksik (Kart Açılmalı)' }}</strong></div>
+            <div>Cari Kodu: <strong [style.color]="isCariValid ? '#059669' : '#e11d48'">{{ cariKodu || 'Eksik (Kart Açılmalı)' }}</strong></div>
             <button type="button" *ngIf="!isCariValid && VKN !== ''" class="btn btn-success btn-xs" (click)="createCariCard()" style="margin-left: auto; padding: 2px 6px;">
               Cari Kartı Oluştur
             </button>
@@ -141,12 +128,12 @@
             <table class="grid-table-clean">
               <thead>
                 <tr>
-                  <th style="width: 15%">Kod</th>
-                  <th style="width: 33%">Hizmet/Ürün</th>
+                  <th style="width: 15%">Malzeme/Hizmet Kodu</th>
+                  <th style="width: 33%">Hizmet Açıklaması</th>
                   <th style="width: 10%; text-align: center;">Miktar</th>
                   <th style="width: 15%; text-align: right;">Birim Fiyat</th>
-                  <th style="width: 10%; text-align: center;">KDV (%)</th>
-                  <th style="width: 17%; text-align: right;">Genel Toplam</th>
+                  <th style="width: 10%; text-align: center;">KDV Oranı (%)</th>
+                  <th style="width: 17%; text-align: right;">Toplam Tutar (Ödenecek Tutar)</th>
                 </tr>
               </thead>
               <tbody *ngFor="let item of invoiceLines; let i = index">
@@ -156,7 +143,7 @@
                     <input type="text" class="table-input-clean" [(ngModel)]="item.kodu" [name]="'kodu_' + i" placeholder="Mal/Hiz Kod" required />
                   </td>
                   <td>
-                    <input type="text" class="table-input-clean" [(ngModel)]="item.ismi" [name]="'ismi_' + i" placeholder="Hizmet veya Stok Adı" required />
+                    <input type="text" class="table-input-clean" [(ngModel)]="item.ismi" [name]="'ismi_' + i" placeholder="Hizmet Açıklaması" required />
                   </td>
                   <td style="text-align: center;">
                     <input type="number" class="table-input-clean" [(ngModel)]="item.miktar" [name]="'miktar_' + i" (input)="calculateTotals()" min="1" style="text-align: center;" />
@@ -175,15 +162,11 @@
                 <tr style="background: rgba(248, 250, 252, 0.75); font-size: 11.5px; color: #475569;">
                   <td colspan="6" style="padding: 6px 14px; border-bottom: 2px solid rgba(148, 163, 184, 0.15);">
                     <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
-                      <div>Brüt Tutar: <strong style="color: #334155;">₺{{ (item.grossTotal || 0) | number:'1.2-2' }}</strong></div>
-                      
                       <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-weight: 600;">İskonto:</span>
                         <input type="number" class="table-input-clean" [(ngModel)]="item.iskonto" [name]="'iskonto_' + i" (input)="calculateTotals()" step="0.01" style="width: 85px; padding: 2px 6px; font-size: 11px; height: 22px;" />
                       </div>
-
-                      <div>Net Tutar: <strong style="color: #334155;">₺{{ (item.netTutar || 0) | number:'1.2-2' }}</strong></div>
-                      <div>Hesaplanan KDV: <strong style="color: #334155;">₺{{ (item.kdvTutari || 0) | number:'1.2-2' }}</strong></div>
+                      <div>KDV Tutarı: <strong style="color: #334155;">₺{{ (item.kdvTutari || 0) | number:'1.2-2' }}</strong></div>
                     </div>
                   </td>
                 </tr>
