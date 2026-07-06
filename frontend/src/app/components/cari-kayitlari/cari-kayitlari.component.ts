@@ -118,11 +118,36 @@ export class CariKayitlariComponent implements OnInit {
     });
   }
 
-  // Dosya seçilince otomatik çözümleme ve Cari Kartı oluşturma
-  onFileSelected(event: any): void {
-    const file: File = event.target.files[0];
-    if (!file) return;
+  isDragOver = false;
 
+  // Sürükle Bırak Eventleri
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    this.isDragOver = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    this.isDragOver = false;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.isDragOver = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.handleFile(file);
+    }
+  }
+
+  onFileSelected(event: any): void {
+    const file = event.target.files?.[0];
+    if (file) {
+      this.handleFile(file);
+    }
+  }
+
+  handleFile(file: File): void {
     const ext = file.name.split('.').pop()?.toLowerCase();
     
     this.loading = true;

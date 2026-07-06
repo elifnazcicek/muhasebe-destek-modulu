@@ -139,6 +139,11 @@
   background-color: rgba(14, 165, 233, 0.02);
 }
 
+.upload-box.drag-active {
+  border-color: #0ea5e9;
+  background-color: rgba(14, 165, 233, 0.08);
+}
+
 .upload-icon {
   font-size: 28px;
   margin-bottom: 8px;
