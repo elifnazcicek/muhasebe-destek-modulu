@@ -34,7 +34,6 @@
       </div>
       <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
         <div class="upload-box" (click)="fileInput.click()">
-          <span class="upload-icon">📁</span>
           <h4 style="font-size: 13px; font-weight: 700; color: #334155; margin: 0;">Fatura Dosyası Yükleyin</h4>
           <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">XML, PDF, JPEG veya PNG formatları desteklenir</p>
           <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xml,.pdf,.jpg,.jpeg,.png" style="display: none;" />

@@ -42,8 +42,16 @@
           </div>
           
           <!-- Resim Taşıma/Kaydırma Kapsayıcısı -->
-          <div style="flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px;" (wheel)="onImageWheel($event)">
-            <img [src]="imageUrl" [style.transform]="'scale(' + imageZoomLevel + ')'" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 6px; transition: transform 0.15s ease-out; transform-origin: center center;" />
+          <div style="flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center; padding: 16px; position: relative;" (wheel)="onImageWheel($event)">
+            <img [src]="imageUrl" 
+                 [style.transform]="'translate(' + panX + 'px, ' + panY + 'px) scale(' + imageZoomLevel + ')'" 
+                 [style.cursor]="imageZoomLevel > 1 ? (isPanning ? 'grabbing' : 'grab') : 'default'"
+                 [style.transition]="isPanning ? 'none' : 'transform 0.15s cubic-bezier(0.16, 1, 0.3, 1)'"
+                 (mousedown)="startPan($event)"
+                 (mousemove)="pan($event)"
+                 (mouseup)="endPan()"
+                 (mouseleave)="endPan()"
+                 style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 6px;" />
           </div>
         </div>
         

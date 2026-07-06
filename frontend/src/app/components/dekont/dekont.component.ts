@@ -174,8 +174,8 @@ export class DekontComponent implements OnInit {
 
               return {
                 cinsi: line.cinsi || 'Hizmet',
-                kodu: line.kodu || '760.01.001',
-                ismi: line.ismi || 'Uyumsoft Hizmeti',
+                kodu: line.kodu !== undefined && line.kodu !== null ? line.kodu : '',
+                ismi: line.ismi !== undefined && line.ismi !== null ? line.ismi : '',
                 miktar: miktar,
                 birimFiyat: birimFiyat,
                 kdvOrani: kdvOrani,
@@ -191,8 +191,8 @@ export class DekontComponent implements OnInit {
             const total = data.genelToplam || 0;
             this.invoiceLines = [{
               cinsi: 'Hizmet',
-              kodu: '760.01.001',
-              ismi: 'Uyumsoft İşlem Hizmet Bedeli',
+              kodu: '',
+              ismi: '',
               miktar: 1,
               birimFiyat: total,
               kdvOrani: 20,
@@ -464,6 +464,9 @@ export class DekontComponent implements OnInit {
     this.imageUrl = null;
     this.htmlPreviewContent = null;
     this.imageZoomLevel = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.isPanning = false;
     this.belgeNo = '';
     this.tarih = '';
     this.VKN = '';
@@ -496,33 +499,67 @@ export class DekontComponent implements OnInit {
     this.statusMessage = null;
   }
 
-  zoomInImage(): void {
-    if (this.imageZoomLevel < 4.0) {
-      this.imageZoomLevel += 0.2;
-    }
+  panX: number = 0;
+  panY: number = 0;
+  startX: number = 0;
+  startY: number = 0;
+  isPanning: boolean = false;
+
+  zoomInImage(factor: number = 0.2): void {
+    this.imageZoomLevel = Math.min(this.imageZoomLevel + factor, 5);
+    this.cdr.detectChanges();
   }
 
-  zoomOutImage(): void {
-    if (this.imageZoomLevel > 0.4) {
-      this.imageZoomLevel -= 0.2;
+  zoomOutImage(factor: number = 0.2): void {
+    this.imageZoomLevel = Math.max(this.imageZoomLevel - factor, 0.4);
+    if (this.imageZoomLevel === 1.0) {
+      this.panX = 0;
+      this.panY = 0;
     }
+    this.cdr.detectChanges();
   }
 
   resetImageZoom(): void {
     this.imageZoomLevel = 1.0;
+    this.panX = 0;
+    this.panY = 0;
+    this.isPanning = false;
+    this.cdr.detectChanges();
+  }
+
+  startPan(event: MouseEvent): void {
+    if (this.imageZoomLevel > 1) {
+      event.preventDefault();
+      this.isPanning = true;
+      this.startX = event.clientX - this.panX;
+      this.startY = event.clientY - this.panY;
+      this.cdr.detectChanges();
+    }
+  }
+
+  pan(event: MouseEvent): void {
+    if (this.isPanning && this.imageZoomLevel > 1) {
+      event.preventDefault();
+      this.panX = event.clientX - this.startX;
+      this.panY = event.clientY - this.startY;
+      this.cdr.detectChanges();
+    }
+  }
+
+  endPan(): void {
+    if (this.isPanning) {
+      this.isPanning = false;
+      this.cdr.detectChanges();
+    }
   }
 
   onImageWheel(event: WheelEvent): void {
     event.preventDefault();
     const zoomFactor = 0.1;
     if (event.deltaY < 0) {
-      if (this.imageZoomLevel < 4.0) {
-        this.imageZoomLevel += zoomFactor;
-      }
+      this.zoomInImage(zoomFactor);
     } else {
-      if (this.imageZoomLevel > 0.4) {
-        this.imageZoomLevel -= zoomFactor;
-      }
+      this.zoomOutImage(zoomFactor);
     }
   }
 }
