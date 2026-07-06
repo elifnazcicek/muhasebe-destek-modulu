@@ -30,13 +30,15 @@ public class DekontController : ControllerBase
         ?? "Server=localhost;Database=ReceiptOcrDb_New;Trusted_Connection=True;TrustServerCertificate=True;";
 
     private readonly GeminiService _geminiService;
+    private readonly IExcelQueueService _excelQueueService;
 
-    public DekontController(IConfiguration configuration, ILogger<DekontController> logger, ReceiptDbContext context, GeminiService geminiService)
+    public DekontController(IConfiguration configuration, ILogger<DekontController> logger, ReceiptDbContext context, GeminiService geminiService, IExcelQueueService excelQueueService)
     {
         _configuration = configuration;
         _logger = logger;
         _context = context;
         _geminiService = geminiService;
+        _excelQueueService = excelQueueService;
 
         // Otomatik tablo güncelleme - FaturaTipi kolonu kontrolü ve ekleme
         try
@@ -689,6 +691,7 @@ public class DekontController : ControllerBase
             }
 
             DateTime parsedDate = DateTime.TryParse(request.Tarih, out var d) ? d : DateTime.Today;
+            var savedDekonts = new List<Models.Dekont>();
 
             foreach (var line in request.Lines)
             {
@@ -706,6 +709,7 @@ public class DekontController : ControllerBase
                     CreatedDate = DateTime.Now
                 };
                 _context.Dekonts.Add(dekont);
+                savedDekonts.Add(dekont);
             }
 
             // Sistem Logu kaydet
@@ -718,6 +722,12 @@ public class DekontController : ControllerBase
             });
 
             await _context.SaveChangesAsync();
+
+            // Queue Excel writing after successful DB save
+            foreach (var sDekont in savedDekonts)
+            {
+                _excelQueueService.QueueWriteDekont(sDekont, "ADD");
+            }
             return Ok(ApiResponse<object>.Ok(null, $"{(request.FaturaTipi == "Alis" ? "Alış" : "Satış")} faturası veritabanına başarıyla kaydedildi."));
         }
         catch (Exception ex)
