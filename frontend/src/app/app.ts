@@ -53,6 +53,8 @@ export class App {
       return 'Fiş Okuma Otomasyonu';
     } else if (url.includes('/dekont')) {
       return 'Uyumsoft e-Fatura Aktarımı';
+    } else if (url.includes('/cari-kayitlari')) {
+      return 'Cari Kayıtları';
     } else if (url.includes('/users')) {
       return 'Kullanıcı Yetki Yönetimi';
     }
@@ -67,6 +69,8 @@ export class App {
       return 'Yapay Zeka Destekli Fiş Görseli Okuma ve Veritabanı Kayıt Sistemi';
     } else if (url.includes('/dekont')) {
       return 'XML ve PDF Fatura/Dekont Çözümleme ve Cari Eşleştirme Paneli';
+    } else if (url.includes('/cari-kayitlari')) {
+      return 'Mikro Veritabanı Cari Kayıtları Listeleme ve Arama Paneli';
     } else if (url.includes('/users')) {
       return 'Sisteme Kayıtlı Personelin Roller ve Erişim Durumlarının Yönetimi';
     }

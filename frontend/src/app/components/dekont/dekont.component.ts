@@ -262,8 +262,8 @@ export class DekontComponent implements OnInit {
       line.grossTotal = line.miktar * line.birimFiyat;
       line.iskonto = line.iskonto || 0;
       line.netTutar = line.grossTotal - line.iskonto;
-      line.kdvTutari = line.netTutar * (line.kdvOrani / 100);
-      line.vergilerDahilToplam = line.netTutar + line.kdvTutari;
+      line.kdvTutari = Math.round((line.netTutar * (line.kdvOrani / 100)) * 100) / 100;
+      line.vergilerDahilToplam = Math.round((line.netTutar + line.kdvTutari) * 100) / 100;
       
       line.tutar = line.netTutar; // compatibility
       this.araToplam += line.netTutar;
@@ -271,6 +271,23 @@ export class DekontComponent implements OnInit {
     });
 
     this.genelToplam = this.araToplam + this.kdvToplam;
+  }
+
+  // Genel toplamı el ile girilen değerlere göre yeniden hesaplar
+  calculateOverallTotals(): void {
+    this.araToplam = 0;
+    this.kdvToplam = 0;
+    this.genelToplam = 0;
+    this.invoiceLines.forEach(line => {
+      const gross = line.miktar * line.birimFiyat;
+      line.iskonto = line.iskonto || 0;
+      line.netTutar = gross - line.iskonto;
+      line.tutar = line.netTutar;
+
+      this.araToplam += line.netTutar;
+      this.kdvToplam += line.kdvTutari || 0;
+      this.genelToplam += line.vergilerDahilToplam || 0;
+    });
   }
 
   // Satır Ekleme

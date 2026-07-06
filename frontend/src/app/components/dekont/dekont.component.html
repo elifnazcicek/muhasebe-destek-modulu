@@ -124,16 +124,17 @@
 
         <!-- İşlem Satırları Grid Tablosu -->
         <div style="flex: 1; display: flex; flex-direction: column; margin-bottom: 16px;">
-          <div class="grid-table-container" style="flex: 1; max-height: 250px; overflow-y: auto;">
-            <table class="grid-table-clean">
+          <div class="grid-table-container" style="flex: 1; max-height: 250px; overflow: auto; width: 100%;">
+            <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; min-width: 900px;">
               <thead>
                 <tr>
                   <th style="width: 15%">Malzeme/Hizmet Kodu</th>
-                  <th style="width: 33%">Hizmet Açıklaması</th>
-                  <th style="width: 10%; text-align: center;">Miktar</th>
-                  <th style="width: 15%; text-align: right;">Birim Fiyat</th>
+                  <th style="width: 25%">Hizmet Açıklaması</th>
+                  <th style="width: 8%; text-align: center;">Miktar</th>
+                  <th style="width: 12%; text-align: right;">Birim Fiyat</th>
                   <th style="width: 10%; text-align: center;">KDV Oranı (%)</th>
-                  <th style="width: 17%; text-align: right;">Toplam Tutar (Ödenecek Tutar)</th>
+                  <th style="width: 12%; text-align: right;">KDV Tutarı</th>
+                  <th style="width: 18%; text-align: right;">Toplam Tutar (Ödenecek Tutar)</th>
                 </tr>
               </thead>
               <tbody *ngFor="let item of invoiceLines; let i = index">
@@ -154,26 +155,28 @@
                   <td style="text-align: center;">
                     <input type="number" class="table-input-clean" [(ngModel)]="item.kdvOrani" [name]="'kdv_' + i" (input)="calculateTotals()" min="0" max="100" style="text-align: center;" />
                   </td>
-                  <td style="text-align: right; font-weight: 700; color: #0284c7; padding-right: 10px; vertical-align: middle;">
-                    ₺{{ (item.vergilerDahilToplam || 0) | number:'1.2-2' }}
+                  <td style="text-align: right;">
+                    <input type="number" class="table-input-clean" [(ngModel)]="item.kdvTutari" [name]="'kdvTutari_' + i" (input)="calculateOverallTotals()" step="0.01" style="text-align: right;" />
+                  </td>
+                  <td style="text-align: right;">
+                    <input type="number" class="table-input-clean" [(ngModel)]="item.vergilerDahilToplam" [name]="'vergilerDahilToplam_' + i" (input)="calculateOverallTotals()" step="0.01" style="text-align: right; font-weight: 700; color: #0284c7;" />
                   </td>
                 </tr>
                 <!-- Alt Satır: Hesaplanan Detaylar ve İskonto Girişi -->
                 <tr style="background: rgba(248, 250, 252, 0.75); font-size: 11.5px; color: #475569;">
-                  <td colspan="6" style="padding: 6px 14px; border-bottom: 2px solid rgba(148, 163, 184, 0.15);">
+                  <td colspan="7" style="padding: 6px 14px; border-bottom: 2px solid rgba(148, 163, 184, 0.15);">
                     <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
                       <div style="display: flex; align-items: center; gap: 6px;">
                         <span style="font-weight: 600;">İskonto:</span>
                         <input type="number" class="table-input-clean" [(ngModel)]="item.iskonto" [name]="'iskonto_' + i" (input)="calculateTotals()" step="0.01" style="width: 85px; padding: 2px 6px; font-size: 11px; height: 22px;" />
                       </div>
-                      <div>KDV Tutarı: <strong style="color: #334155;">₺{{ (item.kdvTutari || 0) | number:'1.2-2' }}</strong></div>
                     </div>
                   </td>
                 </tr>
               </tbody>
               <tbody *ngIf="invoiceLines.length === 0">
                 <tr>
-                  <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
+                  <td colspan="7" style="text-align: center; color: #64748b; padding: 20px;">
                     Uyumsoft XML/PDF belgesi yüklendiğinde satır detayları burada listelenecektir.
                   </td>
                 </tr>

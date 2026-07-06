@@ -1,0 +1,13 @@
+/* Cari Kayıtları Component Styles */
+.spinner {
+  width: 32px;
+  height: 32px;
+  border: 3.5px solid rgba(14, 165, 233, 0.2);
+  border-top-color: #0ea5e9;
+  border-radius: 50%;
+  animation: spin 0.85s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

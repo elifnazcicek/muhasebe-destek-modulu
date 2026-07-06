@@ -1,0 +1,64 @@
+<div class="workspace-grid" style="display: block; padding: 24px; max-width: 1200px; margin: 0 auto;">
+  
+  <section class="app-panel">
+    <div class="panel-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e2e8f0; padding-bottom: 16px; margin-bottom: 20px;">
+      <div>
+        <h2 style="font-size: 1.5rem; font-weight: 700; color: #0f172a; margin: 0;">Mikro Cari Hesap Kayıtları</h2>
+        <p style="font-size: 0.875rem; color: #64748b; margin: 4px 0 0 0;">Mikro veritabanından CARI_HESAPLAR tablosu kayıtları listelenmektedir.</p>
+      </div>
+      <span class="user-tag" style="background-color: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 11px; padding: 4px 8px; border-radius: 6px;">
+        Toplam {{ filteredCaris.length }} Cari
+      </span>
+    </div>
+
+    <div class="panel-body" style="display: flex; flex-direction: column; gap: 16px;">
+      <!-- Arama ve Filtreleme Barı -->
+      <div style="display: flex; gap: 12px; align-items: center;">
+        <input type="text" 
+               class="form-input-clean" 
+               style="flex: 1; max-width: 400px; height: 42px; font-size: 14px;" 
+               placeholder="Cari Ünvanı, Cari Kodu veya VKN Ara..." 
+               [(ngModel)]="searchQuery" 
+               (input)="onSearch()" />
+        <button type="button" class="btn btn-secondary" (click)="fetchCaris()" [disabled]="loading" style="padding: 10px 16px; height: 42px;">
+          Yenile
+        </button>
+      </div>
+
+      <!-- Yükleniyor / Hata Durumları -->
+      <div *ngIf="loading" style="text-align: center; padding: 40px; color: #64748b;">
+        <div class="spinner" style="margin: 0 auto 12px auto;"></div>
+        <p>Cari kayıtları yükleniyor, lütfen bekleyin...</p>
+      </div>
+
+      <div *ngIf="errorMessage" class="status-alert error" style="padding: 12px; border-radius: 6px; margin-bottom: 16px;">
+        <span>{{ errorMessage }}</span>
+      </div>
+
+      <!-- Cari Kayıtları Tablosu -->
+      <div *ngIf="!loading && !errorMessage" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px;">
+        <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; min-width: 600px;">
+          <thead>
+            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+              <th style="padding: 14px; text-align: left; font-weight: 700; color: #475569; width: 25%;">Cari Kodu</th>
+              <th style="padding: 14px; text-align: left; font-weight: 700; color: #475569; width: 50%;">Cari Ünvanı</th>
+              <th style="padding: 14px; text-align: left; font-weight: 700; color: #475569; width: 25%;">VKN / TCKN</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let cari of filteredCaris" style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'">
+              <td style="padding: 14px; font-weight: 600; color: #0284c7;">{{ cari.cariKodu }}</td>
+              <td style="padding: 14px; font-weight: 500; color: #334155;">{{ cari.cariAdi }}</td>
+              <td style="padding: 14px; color: #475569; font-family: monospace; font-size: 13px;">{{ cari.vkn || '-' }}</td>
+            </tr>
+            <tr *ngIf="filteredCaris.length === 0">
+              <td colspan="3" style="text-align: center; padding: 30px; color: #64748b;">
+                Arama kriterine uygun cari hesap kaydı bulunamadı.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</div>

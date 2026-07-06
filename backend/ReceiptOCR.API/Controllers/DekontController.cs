@@ -628,6 +628,41 @@ public class DekontController : ControllerBase
     }
 
     /// <summary>
+    /// Mikro veritabanındaki tüm cari kayıtlarını listeler.
+    /// </summary>
+    [HttpGet("list-caris")]
+    public async Task<IActionResult> ListCaris()
+    {
+        try
+        {
+            var results = new List<object>();
+            using var conn = new SqlConnection(ConnectionString);
+            await conn.OpenAsync();
+
+            var cmdText = "SELECT TOP 100 cari_kod, cari_unvan1, ISNULL(cari_vkn, ISNULL(cari_tckn, '')) AS vkn FROM CARI_HESAPLAR ORDER BY cari_created_date DESC";
+            using var cmd = new SqlCommand(cmdText, conn);
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                results.Add(new
+                {
+                    cariKodu = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                    cariAdi = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    vkn = reader.IsDBNull(2) ? "" : reader.GetString(2)
+                });
+            }
+
+            return Ok(ApiResponse<List<object>>.Ok(results, "Cari kayıtları listelendi."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Cari kayıtlarını listeleme hatası.");
+            return Ok(ApiResponse<List<object>>.Ok(new List<object>(), "Cari tablosu bulunamadı."));
+        }
+    }
+
+    /// <summary>
     /// İnceleme sonrası onaylanan dekont verilerinden Mikro 010401 uyumlu Excel dosyası üretir.
     /// </summary>
     [HttpPost("export-excel")]

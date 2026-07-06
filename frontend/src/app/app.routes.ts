@@ -6,6 +6,7 @@ import { LogsComponent } from './components/logs/logs.component';
 import { UserManagementComponent } from './components/user-management/user-management.component';
 import { DekontComponent } from './components/dekont/dekont.component';
 import { HomeComponent } from './components/home/home.component';
+import { CariKayitlariComponent } from './components/cari-kayitlari/cari-kayitlari.component';
 
 export const routes: Routes = [
   { path: '', redirectTo: 'login', pathMatch: 'full' },
@@ -13,6 +14,7 @@ export const routes: Routes = [
   { path: 'home', component: HomeComponent },
   { path: 'dashboard', component: DashboardComponent },
   { path: 'dekont', component: DekontComponent },
+  { path: 'cari-kayitlari', component: CariKayitlariComponent },
   { path: 'archive', component: ArchiveComponent },
   { path: 'logs', component: LogsComponent },
   { path: 'users', component: UserManagementComponent },
