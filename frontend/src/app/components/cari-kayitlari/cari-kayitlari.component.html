@@ -29,8 +29,8 @@
     <!-- Dosyadan Otomatik Cari Yükleme Paneli -->
     <div class="premium-card" style="display: flex; flex-direction: column;">
       <div class="card-header">
-        <h3 class="card-title">Dosyadan Cari Kartı Yükle</h3>
-        <p class="card-subtitle">Faturalardaki cari bilgilerini otomatik ayıklayıp kart açın.</p>
+        <h3 class="card-title">Excel Dosyasından Cari Yükle</h3>
+        <p class="card-subtitle">Excel cari listenizdeki hesapları otomatik okuyup Mikro'ya kaydedin.</p>
       </div>
       <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
         <div class="upload-box" 
@@ -39,9 +39,9 @@
              (dragover)="onDragOver($event)"
              (dragleave)="onDragLeave($event)"
              (drop)="onDrop($event)">
-          <h4 style="font-size: 13px; font-weight: 700; color: #334155; margin: 0;">Fatura veya Cari Listesi Yükleyin</h4>
-          <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">XML, PDF, Excel (.xlsx, .xls), JPEG veya PNG formatları desteklenir</p>
-          <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xml,.pdf,.jpg,.jpeg,.png,.xlsx,.xls" style="display: none;" />
+          <h4 style="font-size: 13px; font-weight: 700; color: #334155; margin: 0;">Excel Cari Listesi Yükleyin</h4>
+          <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Yalnızca Excel (.xlsx, .xls) formatları desteklenir</p>
+          <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xlsx,.xls" style="display: none;" />
         </div>
       </div>
     </div>
