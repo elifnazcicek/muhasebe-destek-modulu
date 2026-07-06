@@ -56,7 +56,7 @@
         <p class="card-subtitle">Mikro veritabanında CARI_HESAPLAR tablosunda kayıtlı cari kartlar.</p>
       </div>
       <span style="background-color: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 11px; padding: 6px 12px; border-radius: 8px; border: 1px solid #bae6fd;">
-        Toplam {{ filteredCaris.length }} Cari Kart
+        {{ filteredCaris.length }} / {{ cariLimit }} Cari Kart Listeleniyor
       </span>
     </div>
 
@@ -108,6 +108,13 @@
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Daha Fazla Göster Butonu -->
+      <div *ngIf="filteredCaris.length > 0 && !loading" style="display: flex; justify-content: center; margin-top: 16px;">
+        <button type="button" class="premium-btn" (click)="showMoreCaris()" style="width: 200px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0;">
+          Daha Fazla Göster
+        </button>
       </div>
 
     </div>

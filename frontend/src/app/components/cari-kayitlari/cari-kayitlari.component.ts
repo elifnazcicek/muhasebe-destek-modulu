@@ -17,6 +17,7 @@ export class CariKayitlariComponent implements OnInit {
   caris: any[] = [];
   filteredCaris: any[] = [];
   searchQuery = '';
+  cariLimit = 100;
   
   // Manual Cari Add
   newCariName = '';
@@ -51,7 +52,7 @@ export class CariKayitlariComponent implements OnInit {
 
   fetchCaris(): void {
     this.loading = true;
-    this.http.get<any>(`${this.baseUrl}/list-caris`).subscribe({
+    this.http.get<any>(`${this.baseUrl}/list-caris?limit=${this.cariLimit}`).subscribe({
       next: (res) => {
         this.loading = false;
         if (res.success && res.data) {
@@ -68,6 +69,11 @@ export class CariKayitlariComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  showMoreCaris(): void {
+    this.cariLimit += 100;
+    this.fetchCaris();
   }
 
   onSearch(): void {

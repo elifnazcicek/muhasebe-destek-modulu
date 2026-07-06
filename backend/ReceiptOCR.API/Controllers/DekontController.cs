@@ -751,15 +751,18 @@ public class DekontController : ControllerBase
     /// Mikro veritabanındaki tüm cari kayıtlarını listeler.
     /// </summary>
     [HttpGet("list-caris")]
-    public async Task<IActionResult> ListCaris()
+    public async Task<IActionResult> ListCaris([FromQuery] int limit = 100)
     {
+        if (limit <= 0) limit = 100;
+        if (limit > 5000) limit = 5000;
+
         try
         {
             var results = new List<object>();
             using var conn = new SqlConnection(ConnectionString);
             await conn.OpenAsync();
 
-            var cmdText = "SELECT TOP 100 cari_kod, cari_unvan1, ISNULL(cari_vkn, ISNULL(cari_tckn, '')) AS vkn FROM CARI_HESAPLAR ORDER BY cari_created_date DESC";
+            var cmdText = $"SELECT TOP {limit} cari_kod, cari_unvan1, ISNULL(cari_vkn, ISNULL(cari_tckn, '')) AS vkn FROM CARI_HESAPLAR ORDER BY cari_created_date DESC";
             using var cmd = new SqlCommand(cmdText, conn);
 
             using var reader = await cmd.ExecuteReaderAsync();
