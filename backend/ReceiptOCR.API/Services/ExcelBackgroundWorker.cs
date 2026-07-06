@@ -274,20 +274,27 @@ namespace ReceiptOCR.API.Services
                 using var workbook = existsAndValid ? new XLWorkbook(excelPath) : new XLWorkbook();
                 var worksheet = workbook.Worksheets.FirstOrDefault(w => w.Name == "Dekontlar") ?? workbook.Worksheets.Add("Dekontlar");
 
-                if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Hesap No" || worksheet.Cell(1, 5).Value.ToString() != "Tutar")
+                if (!existsAndValid || worksheet.Cell(1, 1).Value.ToString() != "Fatura Tarihi" || worksheet.Cell(1, 2).Value.ToString() != "Cari Kodu")
                 {
-                    worksheet.Cell(1, 1).Value = "Hesap No";
-                    worksheet.Cell(1, 2).Value = "Tarih";
-                    worksheet.Cell(1, 3).Value = "Dekont No";
-                    worksheet.Cell(1, 4).Value = "Karsi Taraf";
-                    worksheet.Cell(1, 5).Value = "Tutar";
-                    worksheet.Cell(1, 6).Value = "Masraf";
-                    worksheet.Cell(1, 7).Value = "Aciklama";
-                    worksheet.Cell(1, 8).Value = "Kaydeden Kullanici";
+                    worksheet.Cell(1, 1).Value = "Fatura Tarihi";
+                    worksheet.Cell(1, 2).Value = "Cari Kodu";
+                    worksheet.Cell(1, 3).Value = "Cari Ünvanı";
+                    worksheet.Cell(1, 4).Value = "Cari VKN";
+                    worksheet.Cell(1, 5).Value = "Belge No";
+                    worksheet.Cell(1, 6).Value = "Malzeme/Hizmet Kod";
+                    worksheet.Cell(1, 7).Value = "Hizmet Açıklaması";
+                    worksheet.Cell(1, 8).Value = "Miktar";
+                    worksheet.Cell(1, 9).Value = "Birim Fiyat";
+                    worksheet.Cell(1, 10).Value = "KDV Oranı";
+                    worksheet.Cell(1, 11).Value = "KDV Tutarı";
+                    worksheet.Cell(1, 12).Value = "Net Tutar";
+                    worksheet.Cell(1, 13).Value = "Ödenecek Tutar";
+                    worksheet.Cell(1, 14).Value = "Evrak Tipi";
 
                     var headerRow = worksheet.Row(1);
                     headerRow.Style.Font.Bold = true;
-                    headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
+                    headerRow.Style.Fill.BackgroundColor = XLColor.FromHtml("#0ea5e9");
+                    headerRow.Style.Font.FontColor = XLColor.White;
                 }
 
                 if (item.Action == "DELETE")
@@ -295,12 +302,12 @@ namespace ReceiptOCR.API.Services
                     int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
                     for (int r = lastRowNumber; r >= 2; r--)
                     {
-                        var cellDekontNo = worksheet.Cell(r, 3).Value.ToString();
-                        var cellHesapNo = worksheet.Cell(r, 1).Value.ToString();
-                        var cellTutar = worksheet.Cell(r, 5).Value.ToString();
+                        var cellDekontNo = worksheet.Cell(r, 5).Value.ToString();
+                        var cellHesapNo = worksheet.Cell(r, 2).Value.ToString();
+                        var cellTutar = worksheet.Cell(r, 12).Value.ToString();
                         
                         if ((!string.IsNullOrEmpty(item.DekontNo) && cellDekontNo == item.DekontNo) ||
-                            (cellHesapNo == item.HesapNo && worksheet.Cell(r, 2).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellTutar == item.Tutar.ToString()))
+                            (cellHesapNo == item.HesapNo && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellTutar == item.Tutar.ToString()))
                         {
                             worksheet.Row(r).Delete();
                             _logger.LogInformation("Excel dekont satiri silindi: Satir {Row}", r);
@@ -313,23 +320,33 @@ namespace ReceiptOCR.API.Services
                     int lastRowNumber = worksheet.LastRowUsed()?.RowNumber() ?? 1;
                     for (int r = 2; r <= lastRowNumber; r++)
                     {
-                        var cellDekontNo = worksheet.Cell(r, 3).Value.ToString();
-                        var cellHesapNo = worksheet.Cell(r, 1).Value.ToString();
+                        var cellDekontNo = worksheet.Cell(r, 5).Value.ToString();
+                        var cellHesapNo = worksheet.Cell(r, 2).Value.ToString();
                         
                         if ((!string.IsNullOrEmpty(item.DekontNo) && cellDekontNo == item.DekontNo) ||
-                            (cellHesapNo == item.HesapNo && worksheet.Cell(r, 2).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellDekontNo == item.DekontNo))
+                            (cellHesapNo == item.HesapNo && worksheet.Cell(r, 1).Value.ToString() == item.Tarih.ToString("yyyy-MM-dd") && cellDekontNo == item.DekontNo))
                         {
-                            worksheet.Cell(r, 1).Value = item.HesapNo ?? "";
-                            worksheet.Cell(r, 2).Value = item.Tarih.ToString("yyyy-MM-dd");
-                            worksheet.Cell(r, 3).Value = item.DekontNo ?? "";
-                            worksheet.Cell(r, 4).Value = item.KarsiTaraf ?? "";
-                            worksheet.Cell(r, 5).Value = item.Tutar;
-                            worksheet.Cell(r, 6).Value = item.Masraf;
+                            worksheet.Cell(r, 1).Value = item.Tarih.ToString("yyyy-MM-dd");
+                            worksheet.Cell(r, 2).Value = item.HesapNo ?? "";
+                            worksheet.Cell(r, 3).Value = item.KarsiTaraf ?? "";
+                            worksheet.Cell(r, 4).Value = item.CariVkn ?? "";
+                            worksheet.Cell(r, 5).Value = item.DekontNo ?? "";
+                            worksheet.Cell(r, 6).Value = item.MalzemeHizmetKodu ?? "";
                             worksheet.Cell(r, 7).Value = item.Aciklama ?? "";
-                            worksheet.Cell(r, 8).Value = item.KaydedenKullanici;
+                            worksheet.Cell(r, 8).Value = item.Miktar;
+                            worksheet.Cell(r, 9).Value = item.BirimFiyat;
+                            worksheet.Cell(r, 10).Value = item.KdvOraniDouble + "%";
+                            worksheet.Cell(r, 11).Value = item.Masraf;
+                            worksheet.Cell(r, 12).Value = item.Tutar;
+                            worksheet.Cell(r, 13).Value = item.OdenecekTutar;
+                            worksheet.Cell(r, 14).Value = item.FaturaTipi == "Satis" ? "Çıktı" : "Girdi";
 
-                            worksheet.Cell(r, 5).Style.NumberFormat.Format = "0.00";
-                            worksheet.Cell(r, 6).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 8).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 9).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 11).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 12).Style.NumberFormat.Format = "0.00";
+                            worksheet.Cell(r, 13).Style.NumberFormat.Format = "0.00";
+
                             rowFound = true;
                             _logger.LogInformation("Excel dekont satiri guncellendi: Satir {Row}", r);
                             break;
@@ -399,17 +416,26 @@ namespace ReceiptOCR.API.Services
             int lastRow = worksheet.LastRowUsed()?.RowNumber() ?? 1;
             int newRow = lastRow + 1;
 
-            worksheet.Cell(newRow, 1).Value = item.HesapNo ?? "";
-            worksheet.Cell(newRow, 2).Value = item.Tarih.ToString("yyyy-MM-dd");
-            worksheet.Cell(newRow, 3).Value = item.DekontNo ?? "";
-            worksheet.Cell(newRow, 4).Value = item.KarsiTaraf ?? "";
-            worksheet.Cell(newRow, 5).Value = item.Tutar;
-            worksheet.Cell(newRow, 6).Value = item.Masraf;
+            worksheet.Cell(newRow, 1).Value = item.Tarih.ToString("yyyy-MM-dd");
+            worksheet.Cell(newRow, 2).Value = item.HesapNo ?? "";
+            worksheet.Cell(newRow, 3).Value = item.KarsiTaraf ?? "";
+            worksheet.Cell(newRow, 4).Value = item.CariVkn ?? "";
+            worksheet.Cell(newRow, 5).Value = item.DekontNo ?? "";
+            worksheet.Cell(newRow, 6).Value = item.MalzemeHizmetKodu ?? "";
             worksheet.Cell(newRow, 7).Value = item.Aciklama ?? "";
-            worksheet.Cell(newRow, 8).Value = item.KaydedenKullanici;
+            worksheet.Cell(newRow, 8).Value = item.Miktar;
+            worksheet.Cell(newRow, 9).Value = item.BirimFiyat;
+            worksheet.Cell(newRow, 10).Value = item.KdvOraniDouble + "%";
+            worksheet.Cell(newRow, 11).Value = item.Masraf;
+            worksheet.Cell(newRow, 12).Value = item.Tutar;
+            worksheet.Cell(newRow, 13).Value = item.OdenecekTutar;
+            worksheet.Cell(newRow, 14).Value = item.FaturaTipi == "Satis" ? "Çıktı" : "Girdi";
 
-            worksheet.Cell(newRow, 5).Style.NumberFormat.Format = "0.00";
-            worksheet.Cell(newRow, 6).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 8).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 9).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 11).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 12).Style.NumberFormat.Format = "0.00";
+            worksheet.Cell(newRow, 13).Style.NumberFormat.Format = "0.00";
             _logger.LogInformation("Excel'e yeni dekont satiri eklendi: Satir {Row}", newRow);
         }
 

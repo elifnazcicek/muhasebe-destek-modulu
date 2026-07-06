@@ -355,7 +355,8 @@ export class DekontComponent implements OnInit {
   }
 
   // Excel Çıktısı Üretme ve İndirme (010401 Modülü Uyumlu)
-  downloadSingleExcel(): void {
+  downloadSingleExcel(faturaTipi?: string): void {
+    const typeToSend = faturaTipi || this.detectedType || 'Alis';
     const payload = {
       evrakNo: this.evrakNo,
       belgeNo: this.belgeNo,
@@ -368,14 +369,16 @@ export class DekontComponent implements OnInit {
       araToplam: this.araToplam,
       kdvToplam: this.kdvToplam,
       genelToplam: this.genelToplam,
-      kullanici: this.currentUsername
+      kullanici: this.currentUsername,
+      faturaTipi: typeToSend
     };
 
     this.http.post(`${this.baseUrl}/export-excel`, payload, { responseType: 'blob' }).subscribe({
       next: (blob: Blob) => {
         const link = document.createElement('a');
         link.href = window.URL.createObjectURL(blob);
-        link.download = `Mikro_Aktarim_${this.belgeNo || 'Fatura'}_${new Date().toISOString().substring(0,10)}.xlsx`;
+        const prefix = typeToSend === 'Satis' ? 'Satis_Aktarim' : 'Alis_Aktarim';
+        link.download = `${prefix}_${this.belgeNo || 'Fatura'}_${new Date().toISOString().substring(0,10)}.xlsx`;
         link.click();
       },
       error: (err) => {
@@ -412,7 +415,7 @@ export class DekontComponent implements OnInit {
         this.loading = false;
         if (res.success) {
           this.showStatus(`${faturaTipi === 'Alis' ? 'Alış' : 'Satış'} faturası başarıyla kaydedildi!`, 'success', 6000);
-          this.downloadSingleExcel();
+          this.downloadSingleExcel(faturaTipi);
         } else {
           this.showStatus(res.message || 'Fatura kaydedilemedi.', 'error');
         }

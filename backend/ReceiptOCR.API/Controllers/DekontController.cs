@@ -40,7 +40,7 @@ public class DekontController : ControllerBase
         _geminiService = geminiService;
         _excelQueueService = excelQueueService;
 
-        // Otomatik tablo güncelleme - FaturaTipi kolonu kontrolü ve ekleme
+        // Otomatik tablo güncelleme - Kolon kontrolü ve ekleme
         try
         {
             using var conn = new SqlConnection(ConnectionString);
@@ -49,6 +49,30 @@ public class DekontController : ControllerBase
                 IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'FaturaTipi')
                 BEGIN
                     ALTER TABLE Dekonts ADD FaturaTipi NVARCHAR(50) NULL;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'CariVkn')
+                BEGIN
+                    ALTER TABLE Dekonts ADD CariVkn NVARCHAR(50) NULL;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'MalzemeHizmetKodu')
+                BEGIN
+                    ALTER TABLE Dekonts ADD MalzemeHizmetKodu NVARCHAR(100) NULL;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'Miktar')
+                BEGIN
+                    ALTER TABLE Dekonts ADD Miktar FLOAT NOT NULL DEFAULT 1.0;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'BirimFiyat')
+                BEGIN
+                    ALTER TABLE Dekonts ADD BirimFiyat DECIMAL(18,2) NOT NULL DEFAULT 0.0;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'KdvOrani')
+                BEGIN
+                    ALTER TABLE Dekonts ADD KdvOrani FLOAT NOT NULL DEFAULT 0.0;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'OdenecekTutar')
+                BEGIN
+                    ALTER TABLE Dekonts ADD OdenecekTutar DECIMAL(18,2) NOT NULL DEFAULT 0.0;
                 END", conn);
             cmd.ExecuteNonQuery();
         }
@@ -614,19 +638,20 @@ public class DekontController : ControllerBase
             using var workbook = new XLWorkbook();
             var worksheet = workbook.Worksheets.Add("Mikro_010401_Aktarim");
 
-            worksheet.Cell(1, 1).Value = "Fatura_Tarihi";
-            worksheet.Cell(1, 2).Value = "Belge_No";
-            worksheet.Cell(1, 3).Value = "Fatura_No";
-            worksheet.Cell(1, 4).Value = "Cari_Kodu";
-            worksheet.Cell(1, 5).Value = "Cari_VKN";
-            worksheet.Cell(1, 6).Value = "Cari_Adi";
-            worksheet.Cell(1, 7).Value = "Tutar";
-            worksheet.Cell(1, 8).Value = "Vergi_Tutar";
-            worksheet.Cell(1, 9).Value = "Açıklama";
-            worksheet.Cell(1, 10).Value = "Hareket_Kodu";
-            worksheet.Cell(1, 11).Value = "Hareket_Adi";
-            worksheet.Cell(1, 12).Value = "Evrak_Tipi";
-            worksheet.Cell(1, 13).Value = "Acik_Kapali";
+            worksheet.Cell(1, 1).Value = "Fatura Tarihi";
+            worksheet.Cell(1, 2).Value = "Cari Kodu";
+            worksheet.Cell(1, 3).Value = "Cari Ünvanı";
+            worksheet.Cell(1, 4).Value = "Cari VKN";
+            worksheet.Cell(1, 5).Value = "Belge No";
+            worksheet.Cell(1, 6).Value = "Malzeme/Hizmet Kod";
+            worksheet.Cell(1, 7).Value = "Hizmet Açıklaması";
+            worksheet.Cell(1, 8).Value = "Miktar";
+            worksheet.Cell(1, 9).Value = "Birim Fiyat";
+            worksheet.Cell(1, 10).Value = "KDV Oranı";
+            worksheet.Cell(1, 11).Value = "KDV Tutarı";
+            worksheet.Cell(1, 12).Value = "Net Tutar";
+            worksheet.Cell(1, 13).Value = "Ödenecek Tutar";
+            worksheet.Cell(1, 14).Value = "Evrak Tipi";
 
             var headerRow = worksheet.Row(1);
             headerRow.Style.Font.Bold = true;
@@ -637,21 +662,25 @@ public class DekontController : ControllerBase
             foreach (var line in request.Lines)
             {
                 worksheet.Cell(rowIdx, 1).Value = request.Tarih;
-                worksheet.Cell(rowIdx, 2).Value = request.EvrakNo;
-                worksheet.Cell(rowIdx, 3).Value = request.BelgeNo;
-                worksheet.Cell(rowIdx, 4).Value = request.CariKodu;
-                worksheet.Cell(rowIdx, 5).Value = request.Vkn;
-                worksheet.Cell(rowIdx, 6).Value = request.CariAdi;
-                worksheet.Cell(rowIdx, 7).Value = line.NetTutar > 0 ? line.NetTutar : line.Tutar;
-                worksheet.Cell(rowIdx, 8).Value = line.KdvTutari >= 0 ? line.KdvTutari : (line.Tutar * (line.KdvOrani / 100.0));
-                worksheet.Cell(rowIdx, 9).Value = !string.IsNullOrEmpty(line.Aciklama) ? line.Aciklama : (string.IsNullOrEmpty(line.Ismi) ? request.CariAdi + " Hizmet/Stok Bedeli" : line.Ismi);
-                worksheet.Cell(rowIdx, 10).Value = line.Kodu;
-                worksheet.Cell(rowIdx, 11).Value = line.Ismi;
-                worksheet.Cell(rowIdx, 12).Value = "e-Fatura";
-                worksheet.Cell(rowIdx, 13).Value = request.OdemeTipi == "Peşin" ? "Kapalı" : "Açık";
+                worksheet.Cell(rowIdx, 2).Value = request.CariKodu;
+                worksheet.Cell(rowIdx, 3).Value = request.CariAdi;
+                worksheet.Cell(rowIdx, 4).Value = request.Vkn;
+                worksheet.Cell(rowIdx, 5).Value = request.BelgeNo;
+                worksheet.Cell(rowIdx, 6).Value = line.Kodu;
+                worksheet.Cell(rowIdx, 7).Value = line.Ismi;
+                worksheet.Cell(rowIdx, 8).Value = line.Miktar;
+                worksheet.Cell(rowIdx, 9).Value = line.BirimFiyat;
+                worksheet.Cell(rowIdx, 10).Value = line.KdvOrani + "%";
+                worksheet.Cell(rowIdx, 11).Value = line.KdvTutari >= 0 ? line.KdvTutari : (line.Tutar * (line.KdvOrani / 100.0));
+                worksheet.Cell(rowIdx, 12).Value = line.NetTutar > 0 ? line.NetTutar : line.Tutar;
+                worksheet.Cell(rowIdx, 13).Value = line.VergilerDahilToplam > 0 ? line.VergilerDahilToplam : (line.NetTutar + line.KdvTutari);
+                worksheet.Cell(rowIdx, 14).Value = request.FaturaTipi == "Satis" ? "Çıktı" : "Girdi";
 
-                worksheet.Cell(rowIdx, 7).Style.NumberFormat.Format = "#,##0.00";
                 worksheet.Cell(rowIdx, 8).Style.NumberFormat.Format = "#,##0.00";
+                worksheet.Cell(rowIdx, 9).Style.NumberFormat.Format = "#,##0.00";
+                worksheet.Cell(rowIdx, 11).Style.NumberFormat.Format = "#,##0.00";
+                worksheet.Cell(rowIdx, 12).Style.NumberFormat.Format = "#,##0.00";
+                worksheet.Cell(rowIdx, 13).Style.NumberFormat.Format = "#,##0.00";
                 rowIdx++;
             }
 
@@ -706,7 +735,13 @@ public class DekontController : ControllerBase
                     Aciklama = line.Ismi,
                     FaturaTipi = request.FaturaTipi, // "Alis" veya "Satis"
                     KaydedenKullanici = request.CreatedBy,
-                    CreatedDate = DateTime.Now
+                    CreatedDate = DateTime.Now,
+                    CariVkn = request.Vkn,
+                    MalzemeHizmetKodu = line.Kodu,
+                    Miktar = line.Miktar,
+                    BirimFiyat = (decimal)line.BirimFiyat,
+                    KdvOrani = line.KdvOrani,
+                    OdenecekTutar = (decimal)(line.VergilerDahilToplam > 0 ? line.VergilerDahilToplam : (line.NetTutar + line.KdvTutari))
                 };
                 _context.Dekonts.Add(dekont);
                 savedDekonts.Add(dekont);
@@ -798,14 +833,20 @@ public class DekontController : ControllerBase
         using var workbook = new XLWorkbook();
         var worksheet = workbook.Worksheets.Add(sheetName);
 
-        worksheet.Cell(1, 1).Value = "Fatura_Tarihi";
-        worksheet.Cell(1, 2).Value = "Belge_No";
-        worksheet.Cell(1, 3).Value = "Cari_Kodu";
-        worksheet.Cell(1, 4).Value = "Cari_Adi";
-        worksheet.Cell(1, 5).Value = "Tutar (KDV Haric)";
-        worksheet.Cell(1, 6).Value = "KDV_Tutar";
-        worksheet.Cell(1, 7).Value = "Hizmet_Stok_Ismi";
-        worksheet.Cell(1, 8).Value = "Kaydeden_Kullanici";
+        worksheet.Cell(1, 1).Value = "Fatura Tarihi";
+        worksheet.Cell(1, 2).Value = "Cari Kodu";
+        worksheet.Cell(1, 3).Value = "Cari Ünvanı";
+        worksheet.Cell(1, 4).Value = "Cari VKN";
+        worksheet.Cell(1, 5).Value = "Belge No";
+        worksheet.Cell(1, 6).Value = "Malzeme/Hizmet Kod";
+        worksheet.Cell(1, 7).Value = "Hizmet Açıklaması";
+        worksheet.Cell(1, 8).Value = "Miktar";
+        worksheet.Cell(1, 9).Value = "Birim Fiyat";
+        worksheet.Cell(1, 10).Value = "KDV Oranı";
+        worksheet.Cell(1, 11).Value = "KDV Tutarı";
+        worksheet.Cell(1, 12).Value = "Net Tutar";
+        worksheet.Cell(1, 13).Value = "Ödenecek Tutar";
+        worksheet.Cell(1, 14).Value = "Evrak Tipi";
 
         var headerRow = worksheet.Row(1);
         headerRow.Style.Font.Bold = true;
@@ -816,16 +857,25 @@ public class DekontController : ControllerBase
         foreach (var d in dekonts)
         {
             worksheet.Cell(rowIdx, 1).Value = d.Tarih.ToString("yyyy-MM-dd");
-            worksheet.Cell(rowIdx, 2).Value = d.DekontNo ?? "";
-            worksheet.Cell(rowIdx, 3).Value = d.HesapNo ?? "";
-            worksheet.Cell(rowIdx, 4).Value = d.KarsiTaraf;
-            worksheet.Cell(rowIdx, 5).Value = d.Tutar;
-            worksheet.Cell(rowIdx, 6).Value = d.Masraf;
+            worksheet.Cell(rowIdx, 2).Value = d.HesapNo ?? "";
+            worksheet.Cell(rowIdx, 3).Value = d.KarsiTaraf ?? "";
+            worksheet.Cell(rowIdx, 4).Value = d.CariVkn ?? "";
+            worksheet.Cell(rowIdx, 5).Value = d.DekontNo ?? "";
+            worksheet.Cell(rowIdx, 6).Value = d.MalzemeHizmetKodu ?? "";
             worksheet.Cell(rowIdx, 7).Value = d.Aciklama ?? "";
-            worksheet.Cell(rowIdx, 8).Value = d.KaydedenKullanici;
+            worksheet.Cell(rowIdx, 8).Value = d.Miktar;
+            worksheet.Cell(rowIdx, 9).Value = d.BirimFiyat;
+            worksheet.Cell(rowIdx, 10).Value = d.KdvOrani + "%";
+            worksheet.Cell(rowIdx, 11).Value = d.Masraf; // Kdv Tutari
+            worksheet.Cell(rowIdx, 12).Value = d.Tutar; // Net Tutar
+            worksheet.Cell(rowIdx, 13).Value = d.OdenecekTutar;
+            worksheet.Cell(rowIdx, 14).Value = d.FaturaTipi == "Satis" ? "Çıktı" : "Girdi";
 
-            worksheet.Cell(rowIdx, 5).Style.NumberFormat.Format = "#,##0.00";
-            worksheet.Cell(rowIdx, 6).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(rowIdx, 8).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(rowIdx, 9).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(rowIdx, 11).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(rowIdx, 12).Style.NumberFormat.Format = "#,##0.00";
+            worksheet.Cell(rowIdx, 13).Style.NumberFormat.Format = "#,##0.00";
             rowIdx++;
         }
 
@@ -988,6 +1038,7 @@ public class ExportExcelRequest
     public double KdvToplam { get; set; }
     public double GenelToplam { get; set; }
     public string Kullanici { get; set; } = string.Empty;
+    public string FaturaTipi { get; set; } = string.Empty;
 }
 
 public class ParsedInvoiceLine

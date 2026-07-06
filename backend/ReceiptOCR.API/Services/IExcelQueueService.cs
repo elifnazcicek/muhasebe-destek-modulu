@@ -28,6 +28,13 @@ namespace ReceiptOCR.API.Services
         public decimal Tutar { get; set; }
         public decimal Masraf { get; set; }
         public string? Aciklama { get; set; }
+        public string? CariVkn { get; set; }
+        public string? MalzemeHizmetKodu { get; set; }
+        public double Miktar { get; set; } = 1.0;
+        public decimal BirimFiyat { get; set; }
+        public double KdvOraniDouble { get; set; }
+        public decimal OdenecekTutar { get; set; }
+        public string? FaturaTipi { get; set; }
     }
 
     public interface IExcelQueueService
@@ -101,6 +108,13 @@ namespace ReceiptOCR.API.Services
                 Masraf = dekont.Masraf,
                 Aciklama = dekont.Aciklama,
                 KaydedenKullanici = dekont.KaydedenKullanici,
+                CariVkn = dekont.CariVkn,
+                MalzemeHizmetKodu = dekont.MalzemeHizmetKodu,
+                Miktar = dekont.Miktar,
+                BirimFiyat = dekont.BirimFiyat,
+                KdvOraniDouble = dekont.KdvOrani,
+                OdenecekTutar = dekont.OdenecekTutar,
+                FaturaTipi = dekont.FaturaTipi,
                 Action = action
             };
 
