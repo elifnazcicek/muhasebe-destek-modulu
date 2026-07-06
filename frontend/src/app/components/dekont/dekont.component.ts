@@ -294,8 +294,8 @@ export class DekontComponent implements OnInit {
   addNewLine(): void {
     this.invoiceLines.push({
       cinsi: 'Hizmet',
-      kodu: '760.01.001',
-      ismi: 'Banka Masraf Gideri',
+      kodu: '',
+      ismi: '',
       miktar: 1,
       birimFiyat: 0,
       kdvOrani: 20,

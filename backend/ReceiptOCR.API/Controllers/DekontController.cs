@@ -406,7 +406,7 @@ public class DekontController : ControllerBase
             {
                 var itemCode = el.Element(cac + "Item")?.Element(cac + "SellersItemIdentification")?.Element(cbc + "ID")?.Value 
                             ?? el.Element(cac + "Item")?.Element(cac + "BuyersItemIdentification")?.Element(cbc + "ID")?.Value 
-                            ?? "760.01.001";
+                            ?? "";
                 var itemName = el.Element(cac + "Item")?.Element(cac + "Name")?.Value ?? "Hizmet Satırı";
                 var qtyStr = el.Element(cbc + "InvoicedQuantity")?.Value ?? "1";
                 var priceStr = el.Element(cac + "Price")?.Element(cbc + "PriceAmount")?.Value ?? "0";
@@ -473,7 +473,7 @@ public class DekontController : ControllerBase
                 lines.Add(new ParsedInvoiceLine
                 {
                     Cinsi = "Hizmet",
-                    Kodu = "760.01.001",
+                    Kodu = "",
                     Ismi = "Uyumsoft Genel Hizmet Bedeli",
                     Miktar = 1,
                     BirimFiyat = calculatedAraToplam,
@@ -1079,7 +1079,7 @@ public class ExportExcelRequest
 public class ParsedInvoiceLine
 {
     public string Cinsi { get; set; } = "Hizmet";
-    public string Kodu { get; set; } = "760.01.001";
+    public string Kodu { get; set; } = string.Empty;
     public string Ismi { get; set; } = string.Empty;
     public double Tutar { get; set; }
     public double KdvOrani { get; set; }

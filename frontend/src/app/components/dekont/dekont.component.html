@@ -97,7 +97,7 @@
           </div>
 
           <div class="form-group">
-            <label for="detected_type">Fatura Tipi (Evrak Tipi)</label>
+            <label for="detected_type">Evrak Tipi</label>
             <select id="detected_type" class="form-input-clean" [(ngModel)]="detectedType" name="detectedType" style="height: 40px; font-size: 14px;">
               <option value="Alis">Alış Faturası (Girdi)</option>
               <option value="Satis">Satış Faturası (Çıktı)</option>
@@ -105,9 +105,9 @@
           </div>
 
           <div class="form-group">
-            <label for="cari_adi">Tedarikçi (Cari Ünvanı)</label>
+            <label for="cari_adi">Cari Ünvanı</label>
             <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" placeholder="Tedarikçi unvanı" required style="flex: 1;" />
+              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" placeholder="Cari Ünvanı" required style="flex: 1;" />
               <button type="button" class="btn btn-secondary btn-sm" (click)="searchAndMatchCari()" style="padding: 8px 10px;">Ara</button>
             </div>
           </div>
@@ -134,7 +134,7 @@
                   <th style="width: 12%; text-align: right;">Birim Fiyat</th>
                   <th style="width: 10%; text-align: center;">KDV Oranı (%)</th>
                   <th style="width: 12%; text-align: right;">KDV Tutarı</th>
-                  <th style="width: 18%; text-align: right;">Toplam Tutar (Ödenecek Tutar)</th>
+                  <th style="width: 18%; text-align: right;">Ödenecek Tutar</th>
                 </tr>
               </thead>
               <tbody *ngFor="let item of invoiceLines; let i = index">
