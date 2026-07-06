@@ -159,7 +159,7 @@ Bu belgeyi analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uy
 10. masraf: Banka komisyonu veya masrafı (Faturada KDV dahil toplam masrafı veya 0.00 yaz).
 11. aciklama: Dekont açıklaması veya fatura açıklaması.
 12. fatura_satirlari: Faturadaki tüm ürün veya hizmet kalemlerini ayrı ayrı liste halinde çıkar. Banka dekontu ise tek bir hizmet kalemi olarak transfer bedelini ekle. Her bir kalemde şu bilgiler bulunmalıdır:
-   - malzeme_hizmet_kodu: Kalemin kodu (varsa stok kodu veya hizmet kodu, yoksa '760.01.001' yaz).
+   - malzeme_hizmet_kodu: Kalemin kodu (varsa stok kodu veya hizmet kodu, yoksa HER ZAMAN bos dize olarak "" yaz).
    - malzeme_hizmet_adi: Kalemin adı veya açıklaması.
    - miktar: Kalemin miktarı (varsa miktar, yoksa 1).
    - birim_fiyat: Kalemin KDV hariç birim fiyatı.
@@ -184,7 +184,7 @@ JSON Şeması:
 ""aciklama"": ""İşlem Açıklaması"",
 ""fatura_satirlari"": [
   {
-    ""malzeme_hizmet_kodu"": ""760.01.001"",
+    ""malzeme_hizmet_kodu"": """",
     ""malzeme_hizmet_adi"": ""Ürün/Hizmet Adı"",
     ""miktar"": 1.0,
     ""birim_fiyat"": 1250.00,
