@@ -181,14 +181,14 @@
           <div class="form-group">
             <label>Genel KDV Toplamı</label>
             <div class="input-with-icon">
-              <span class="currency-label">TL</span>
+              <span class="currency-label">₺</span>
               <input type="number" [(ngModel)]="taxAmount" name="taxAmount" class="form-input" [readonly]="isInspectMode" [style.background-color]="isInspectMode ? 'rgba(0,0,0,0.02)' : 'transparent'" [style.cursor]="isInspectMode ? 'not-allowed' : 'text'">
             </div>
           </div>
           <div class="form-group">
             <label>Genel Toplam (KDV Dahil)</label>
             <div class="input-with-icon">
-              <span class="currency-label">TL</span>
+              <span class="currency-label">₺</span>
               <input type="number" [(ngModel)]="totalAmount" name="totalAmount" class="form-input" [readonly]="isInspectMode" [style.background-color]="isInspectMode ? 'rgba(0,0,0,0.02)' : 'transparent'" [style.cursor]="isInspectMode ? 'not-allowed' : 'text'">
             </div>
           </div>
@@ -240,7 +240,7 @@
             </div>
             <div class="card-merchant">{{ r.merchantName }}</div>
             <div class="card-bottom" style="display: flex; gap: 5px; align-items: center; justify-content: space-between;">
-              <div class="card-total">TL {{ r.totalAmount | number:'1.2-2' }}</div>
+              <div class="card-total">₺{{ r.totalAmount | number:'1.2-2' }}</div>
               <div style="display: flex; gap: 4px;">
                 <button *ngIf="r.createdBy === currentUsername || currentUserRole === 'Admin'" class="btn btn-primary btn-xs" (click)="loadReceiptForEdit(r.id)">Düzenle</button>
                 <button *ngIf="r.createdBy !== currentUsername && currentUserRole !== 'Admin'" class="btn btn-secondary btn-xs" style="background-color: #0ea5e9; border: none; color: white;" (click)="loadReceiptForInspect(r.id)">İncele</button>

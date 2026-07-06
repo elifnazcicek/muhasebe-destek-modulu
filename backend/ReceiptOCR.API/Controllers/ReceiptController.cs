@@ -357,13 +357,13 @@ public class ReceiptController : ControllerBase
                 .Where(e => e.FirmaAdi == expense.FirmaAdi 
                          && e.FisNo == expense.FisNo 
                          && e.Tarih == expense.Tarih 
-                         && e.KaydedenKullanici == expense.KaydedenKullanici
-                         && e.FisinGenelToplami == expense.FisinGenelToplami)
+                         && e.KaydedenKullanici == expense.KaydedenKullanici)
                 .ToListAsync();
 
-            // Aynı saniyeler içinde kaydedilmiş olanları filtreleyelim (5 saniye tolerans)
+            // Aynı saniyeler içinde kaydedilmiş olanları filtreleyelim (5 saniye tolerans) ve unmapped kolonu bellekte eşleştirelim
             relatedExpenses = relatedExpenses
-                .Where(e => Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
+                .Where(e => e.FisinGenelToplami == expense.FisinGenelToplami 
+                         && Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
                 .OrderBy(e => e.Id)
                 .ToList();
 
@@ -490,12 +490,13 @@ public class ReceiptController : ControllerBase
                          && e.FisNo == expense.FisNo 
                          && e.Tarih == expense.Tarih 
                          && e.KaydedenKullanici == expense.KaydedenKullanici
-                         && e.FisinGenelToplami == expense.FisinGenelToplami
                          && e.Id != expense.Id)
                 .ToListAsync();
 
+            // Bellekte (client-side) unmapped FisinGenelToplami ve zaman tolerans filtresini uygulayalım
             oldRelated = oldRelated
-                .Where(e => Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
+                .Where(e => e.FisinGenelToplami == expense.FisinGenelToplami 
+                         && Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
                 .ToList();
 
             foreach (var rel in oldRelated)
@@ -576,12 +577,13 @@ public class ReceiptController : ControllerBase
                 .Where(e => e.FirmaAdi == expense.FirmaAdi 
                          && e.FisNo == expense.FisNo 
                          && e.Tarih == expense.Tarih 
-                         && e.KaydedenKullanici == expense.KaydedenKullanici
-                         && e.FisinGenelToplami == expense.FisinGenelToplami)
+                         && e.KaydedenKullanici == expense.KaydedenKullanici)
                 .ToListAsync();
 
+            // Bellekte (client-side) unmapped FisinGenelToplami ve zaman tolerans filtresini uygulayalım
             relatedExpenses = relatedExpenses
-                .Where(e => Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
+                .Where(e => e.FisinGenelToplami == expense.FisinGenelToplami 
+                         && Math.Abs((e.CreatedDate - expense.CreatedDate).TotalSeconds) <= 5)
                 .ToList();
 
             foreach (var exp in relatedExpenses)

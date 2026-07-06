@@ -18,20 +18,36 @@
            (dragleave)="onDragLeave($event)"
            (drop)="onDrop($event)">
         <span class="icon">■</span>
-        <h4>Uyumsoft XML veya PDF Belgesini Buraya Sürükleyin</h4>
-        <p>Desteklenen formatlar: UBL-TR XML, PDF Fatura/Dekont</p>
+        <h4>XML, PDF veya Fiş/Dekont Görseli Sürükleyin</h4>
+        <p>Desteklenen formatlar: XML, PDF, JPG, JPEG, PNG</p>
         <button type="button" class="btn btn-secondary btn-sm" style="margin-top: 12px;">Dosya Seç</button>
-        <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xml,.pdf" style="display: none;" />
+        <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xml,.pdf,.jpg,.jpeg,.png" style="display: none;" />
       </div>
 
-      <!-- Yüklenen Dosyanın PDF/HTML Önizlemesi -->
+      <!-- Yüklenen Dosyanın PDF/HTML/Görsel Önizlemesi -->
       <div class="pdf-container" *ngIf="showPreview" style="flex: 1; display: flex; flex-direction: column;">
         <iframe *ngIf="isPdf && safePdfUrl" [src]="safePdfUrl" class="pdf-frame"></iframe>
         
         <!-- XML HTML Görselleştirici -->
-        <div *ngIf="!isPdf && htmlPreviewContent" [innerHTML]="htmlPreviewContent" style="width: 100%; height: 100%; overflow: auto; background-color: #ffffff; padding: 12px; border-radius: 6px;"></div>
+        <div *ngIf="!isPdf && !isImage && htmlPreviewContent" [innerHTML]="htmlPreviewContent" style="width: 100%; height: 100%; overflow: auto; background-color: #ffffff; padding: 12px; border-radius: 6px;"></div>
         
-        <div *ngIf="!isPdf && !htmlPreviewContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #64748b; text-align: center; padding: 20px;">
+        <!-- Görsel Önizleyici -->
+        <div *ngIf="isImage && imageUrl" style="width: 100%; height: 100%; position: relative; display: flex; flex-direction: column; background-color: #f8fafc; border-radius: 6px; overflow: hidden;">
+          <!-- Görsel Kontrol Araçları (Zoom) -->
+          <div style="position: absolute; top: 12px; right: 12px; display: flex; gap: 6px; z-index: 10; background: rgba(15, 23, 42, 0.85); padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.15); backdrop-filter: blur(8px);">
+            <button type="button" (click)="zoomOutImage()" style="background: none; border: none; color: #fff; font-size: 15px; font-weight: bold; cursor: pointer; padding: 2px 8px; outline: none;">−</button>
+            <span style="color: #fff; font-size: 11px; font-weight: 700; align-self: center; min-width: 42px; text-align: center;">%{{ (imageZoomLevel * 100) | number:'1.0-0' }}</span>
+            <button type="button" (click)="zoomInImage()" style="background: none; border: none; color: #fff; font-size: 15px; font-weight: bold; cursor: pointer; padding: 2px 8px; outline: none;">+</button>
+            <button type="button" (click)="resetImageZoom()" style="background: rgba(255,255,255,0.18); border: none; color: #fff; font-size: 10px; cursor: pointer; padding: 2px 8px; border-radius: 4px; font-weight: 700; outline: none; margin-left: 2px;">Sıfırla</button>
+          </div>
+          
+          <!-- Resim Taşıma/Kaydırma Kapsayıcısı -->
+          <div style="flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; padding: 16px;" (wheel)="onImageWheel($event)">
+            <img [src]="imageUrl" [style.transform]="'scale(' + imageZoomLevel + ')'" style="max-width: 100%; max-height: 100%; object-fit: contain; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 6px; transition: transform 0.15s ease-out; transform-origin: center center;" />
+          </div>
+        </div>
+        
+        <div *ngIf="!isPdf && !isImage && !htmlPreviewContent" style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #64748b; text-align: center; padding: 20px;">
           <h4>XML Fatura Çözümlendi</h4>
           <p>Detayları sağdaki formdan inceleyebilirsiniz.</p>
         </div>
@@ -81,9 +97,22 @@
           </div>
 
           <div class="form-group">
-            <label for="cari_adi">Tedarikçi</label>
+            <label for="detected_type">Fatura Tipi (Tespit Edilen)</label>
+            <select id="detected_type" class="form-input-clean" [(ngModel)]="detectedType" name="detectedType" style="height: 40px; font-size: 14px;">
+              <option value="Alis">Alış Faturası</option>
+              <option value="Satis">Satış Faturası</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="odeme_tipi">Ödeme Tipi</label>
+            <input type="text" id="odeme_tipi" class="form-input-clean" [(ngModel)]="odemeTipi" name="odemeTipi" required placeholder="Örn: Açık Hesap, Nakit" />
+          </div>
+
+          <div class="form-group">
+            <label for="cari_adi">{{ detectedType === 'Alis' ? 'Tedarikçi' : 'Müşteri' }}</label>
             <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" placeholder="Firma unvanı girin" required style="flex: 1;" />
+              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" [placeholder]="detectedType === 'Alis' ? 'Tedarikçi unvanı' : 'Müşteri unvanı'" required style="flex: 1;" />
               <button type="button" class="btn btn-secondary btn-sm" (click)="searchAndMatchCari()" style="padding: 8px 10px;">Ara</button>
             </div>
           </div>
@@ -91,7 +120,7 @@
           <div class="form-group">
             <label for="toplam_tutar">Toplam Tutar</label>
             <div style="position: relative; display: flex; align-items: center;">
-              <span style="position: absolute; left: 10px; font-weight: 700; color: #475569;">TL</span>
+              <span style="position: absolute; left: 10px; font-weight: 700; color: #475569;">₺</span>
               <input type="text" id="toplam_tutar" class="form-input-clean" [value]="genelToplam | number:'1.2-2'" readonly style="padding-left: 28px; font-weight: 700; color: #0284c7;" />
             </div>
           </div>
@@ -108,19 +137,24 @@
 
         <!-- İşlem Satırları Grid Tablosu -->
         <div style="flex: 1; display: flex; flex-direction: column; margin-bottom: 16px;">
-          <div class="grid-table-container" style="flex: 1; max-height: 220px; overflow-y: auto;">
+          <div class="grid-table-container" style="flex: 1; max-height: 250px; overflow-y: auto;">
             <table class="grid-table-clean">
               <thead>
                 <tr>
-                  <th style="width: 40%">Hizmet/Ürün</th>
-                  <th style="width: 12%; text-align: center;">Miktar</th>
-                  <th style="width: 18%; text-align: right;">Birim Fiyat</th>
-                  <th style="width: 15%; text-align: center;">KDV (%)</th>
-                  <th style="width: 15%; text-align: right;">Toplam</th>
+                  <th style="width: 15%">Kod</th>
+                  <th style="width: 33%">Hizmet/Ürün</th>
+                  <th style="width: 10%; text-align: center;">Miktar</th>
+                  <th style="width: 15%; text-align: right;">Birim Fiyat</th>
+                  <th style="width: 10%; text-align: center;">KDV (%)</th>
+                  <th style="width: 17%; text-align: right;">Genel Toplam</th>
                 </tr>
               </thead>
-              <tbody>
-                <tr *ngFor="let item of invoiceLines; let i = index">
+              <tbody *ngFor="let item of invoiceLines; let i = index">
+                <!-- Üst Satır: Giriş Değerleri -->
+                <tr>
+                  <td>
+                    <input type="text" class="table-input-clean" [(ngModel)]="item.kodu" [name]="'kodu_' + i" placeholder="Mal/Hiz Kod" required />
+                  </td>
                   <td>
                     <input type="text" class="table-input-clean" [(ngModel)]="item.ismi" [name]="'ismi_' + i" placeholder="Hizmet veya Stok Adı" required />
                   </td>
@@ -133,12 +167,30 @@
                   <td style="text-align: center;">
                     <input type="number" class="table-input-clean" [(ngModel)]="item.kdvOrani" [name]="'kdv_' + i" (input)="calculateTotals()" min="0" max="100" style="text-align: center;" />
                   </td>
-                  <td style="text-align: right; font-weight: 700; color: #334155; padding-right: 10px;">
-                    {{ (item.miktar * item.birimFiyat * (1 + item.kdvOrani / 100)) | number:'1.2-2' }}
+                  <td style="text-align: right; font-weight: 700; color: #0284c7; padding-right: 10px; vertical-align: middle;">
+                    ₺{{ (item.vergilerDahilToplam || 0) | number:'1.2-2' }}
                   </td>
                 </tr>
-                <tr *ngIf="invoiceLines.length === 0">
-                  <td colspan="5" style="text-align: center; color: #64748b; padding: 20px;">
+                <!-- Alt Satır: Hesaplanan Detaylar ve İskonto Girişi -->
+                <tr style="background: rgba(248, 250, 252, 0.75); font-size: 11.5px; color: #475569;">
+                  <td colspan="6" style="padding: 6px 14px; border-bottom: 2px solid rgba(148, 163, 184, 0.15);">
+                    <div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+                      <div>Brüt Tutar: <strong style="color: #334155;">₺{{ (item.grossTotal || 0) | number:'1.2-2' }}</strong></div>
+                      
+                      <div style="display: flex; align-items: center; gap: 6px;">
+                        <span style="font-weight: 600;">İskonto:</span>
+                        <input type="number" class="table-input-clean" [(ngModel)]="item.iskonto" [name]="'iskonto_' + i" (input)="calculateTotals()" step="0.01" style="width: 85px; padding: 2px 6px; font-size: 11px; height: 22px;" />
+                      </div>
+
+                      <div>Net Tutar: <strong style="color: #334155;">₺{{ (item.netTutar || 0) | number:'1.2-2' }}</strong></div>
+                      <div>Hesaplanan KDV: <strong style="color: #334155;">₺{{ (item.kdvTutari || 0) | number:'1.2-2' }}</strong></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+              <tbody *ngIf="invoiceLines.length === 0">
+                <tr>
+                  <td colspan="6" style="text-align: center; color: #64748b; padding: 20px;">
                     Uyumsoft XML/PDF belgesi yüklendiğinde satır detayları burada listelenecektir.
                   </td>
                 </tr>
@@ -152,16 +204,13 @@
           </button>
         </div>
 
-        <!-- Alt Aksiyon Butonları - Alış / Satış Olarak İki Ayrı Kaydetme Butonu (Aynı Renkte - btn-primary) -->
+        <!-- Alt Aksiyon Butonları - Tek bir Kaydet Butonu -->
         <div style="display: flex; gap: 12px; margin-top: auto;">
           <button type="button" class="btn btn-secondary" (click)="addNewLine()" [disabled]="VKN === ''" style="flex: 0.8;">
             Satır Ekle
           </button>
-          <button type="button" class="btn btn-primary" style="flex: 1.1;" (click)="saveAs('Alis')" [disabled]="!isCariValid || VKN === '' || loading">
-            Alış Olarak Kaydet
-          </button>
-          <button type="button" class="btn btn-primary" style="flex: 1.1;" (click)="saveAs('Satis')" [disabled]="!isCariValid || VKN === '' || loading">
-            Satış Olarak Kaydet
+          <button type="button" class="btn btn-primary" style="flex: 2.2;" (click)="saveAs(detectedType)" [disabled]="!isCariValid || VKN === '' || loading">
+            Kaydet
           </button>
         </div>
 

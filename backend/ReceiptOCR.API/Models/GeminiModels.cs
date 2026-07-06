@@ -64,5 +64,53 @@ namespace ReceiptOCR.API.Models
 
         [JsonPropertyName("aciklama")]
         public string? Aciklama { get; set; }
+
+        [JsonPropertyName("satici_unvan")]
+        public string? SaticiUnvan { get; set; }
+
+        [JsonPropertyName("satici_vkn")]
+        public string? SaticiVkn { get; set; }
+
+        [JsonPropertyName("alici_unvan")]
+        public string? AliciUnvan { get; set; }
+
+        [JsonPropertyName("alici_vkn")]
+        public string? AliciVkn { get; set; }
+
+        [JsonPropertyName("fatura_satirlari")]
+        public List<ExtractedInvoiceLine>? FaturaSatirlari { get; set; }
+    }
+
+    public class ExtractedInvoiceLine
+    {
+        [JsonPropertyName("malzeme_hizmet_kodu")]
+        public string? MalzemeHizmetKodu { get; set; }
+
+        [JsonPropertyName("malzeme_hizmet_adi")]
+        public string? MalzemeHizmetAdi { get; set; }
+
+        [JsonPropertyName("miktar")]
+        public double Miktar { get; set; } = 1;
+
+        [JsonPropertyName("birim_fiyat")]
+        public decimal BirimFiyat { get; set; }
+
+        [JsonPropertyName("kdv_orani")]
+        public double KdvOrani { get; set; }
+
+        [JsonPropertyName("iskonto")]
+        public decimal Iskonto { get; set; } = 0;
+
+        [JsonPropertyName("kdv_tutari")]
+        public decimal KdvTutari { get; set; }
+
+        [JsonPropertyName("gross_total")]
+        public decimal GrossTotal { get; set; }
+
+        [JsonPropertyName("net_tutar")]
+        public decimal NetTutar { get; set; }
+
+        [JsonPropertyName("vergiler_dahil_toplam")]
+        public decimal VergilerDahilToplam { get; set; }
     }
 }

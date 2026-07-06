@@ -1,10 +1,11 @@
 import { Component, signal } from '@angular/core';
 import { RouterOutlet, Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, CommonModule, RouterLink, RouterLinkActive],
+  imports: [RouterOutlet, CommonModule, RouterLink, RouterLinkActive, FormsModule],
   templateUrl: './app.html',
   styleUrl: './app.scss'
 })
@@ -12,7 +13,14 @@ export class App {
   protected readonly title = signal('frontend');
   isSidebarCollapsed = signal(false); // Açılır-kapanır sol panel durumu
 
-  constructor(private router: Router) {}
+  isEditingCompanyName = false;
+  myCompanyName = '';
+  myCompanyNameInput = '';
+
+  constructor(private router: Router) {
+    this.myCompanyName = localStorage.getItem('myCompanyName') || '';
+    this.myCompanyNameInput = this.myCompanyName;
+  }
 
   isLoggedIn(): boolean {
     return localStorage.getItem('isLoggedIn') === 'true';
@@ -95,5 +103,20 @@ export class App {
   downloadSatisExcel(): void {
     const username = localStorage.getItem('username') || 'default';
     window.open(`http://localhost:5000/api/dekont/export-satis?username=${encodeURIComponent(username)}`, '_blank');
+  }
+
+  enableCompanyNameEdit(): void {
+    this.myCompanyNameInput = this.myCompanyName;
+    this.isEditingCompanyName = true;
+  }
+
+  cancelCompanyNameEdit(): void {
+    this.isEditingCompanyName = false;
+  }
+
+  saveCompanyName(): void {
+    this.myCompanyName = this.myCompanyNameInput;
+    localStorage.setItem('myCompanyName', this.myCompanyName);
+    this.isEditingCompanyName = false;
   }
 }

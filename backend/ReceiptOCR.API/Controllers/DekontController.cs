@@ -13,6 +13,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.EntityFrameworkCore;
 using ReceiptOCR.API.Data;
 using ReceiptOCR.API.Models;
+using ReceiptOCR.API.Services;
 
 namespace ReceiptOCR.API.Controllers;
 
@@ -28,11 +29,14 @@ public class DekontController : ControllerBase
     private string ConnectionString => _configuration.GetConnectionString("DefaultConnection") 
         ?? "Server=localhost;Database=ReceiptOcrDb_New;Trusted_Connection=True;TrustServerCertificate=True;";
 
-    public DekontController(IConfiguration configuration, ILogger<DekontController> logger, ReceiptDbContext context)
+    private readonly GeminiService _geminiService;
+
+    public DekontController(IConfiguration configuration, ILogger<DekontController> logger, ReceiptDbContext context, GeminiService geminiService)
     {
         _configuration = configuration;
         _logger = logger;
         _context = context;
+        _geminiService = geminiService;
 
         // Otomatik tablo güncelleme - FaturaTipi kolonu kontrolü ve ekleme
         try
@@ -56,7 +60,7 @@ public class DekontController : ControllerBase
     /// Uyumsoft XML faturasını okuyup çözümleyen ve Mikro SQL veritabanında carisini denetleyen endpoint
     /// </summary>
     [HttpPost("parse-xml")]
-    public async Task<IActionResult> ParseXml(IFormFile file)
+    public async Task<IActionResult> ParseXml(IFormFile file, [FromForm] string? myCompanyName)
     {
         _logger.LogInformation("[API] Uyumsoft XML Çözümleme isteği alındı. Dosya: {FileName}", file?.FileName);
 
@@ -66,25 +70,228 @@ public class DekontController : ControllerBase
         try
         {
             var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
-            if (ext == ".pdf")
+            if (ext == ".pdf" || ext == ".jpg" || ext == ".jpeg" || ext == ".png")
             {
-                // PDF Simülasyon Modu (Gerekirse text okuma yapılabilir, şimdilik test verisi dönüyoruz)
+                // PDF veya Görsel Çözümleme - Gemini API kullanarak
+                using var ms = new MemoryStream();
+                await file.CopyToAsync(ms);
+                var fileBytes = ms.ToArray();
+
+                string mimeType = "application/pdf";
+                if (ext == ".png") mimeType = "image/png";
+                else if (ext == ".jpg" || ext == ".jpeg") mimeType = "image/jpeg";
+
+                _logger.LogInformation("Gemini ile {Ext} belgesi çözümleniyor...", ext);
+                var scanResult = await _geminiService.ScanDekontAsync(fileBytes, mimeType);
+
+                if (scanResult == null)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Gemini API dekont/fatura verilerini okuyamadı."));
+                }
+
+                // Tarihi yyyy-MM-dd formatına çevirelim
+                string formattedDate = DateTime.Today.ToString("yyyy-MM-dd");
+                if (!string.IsNullOrEmpty(scanResult.Tarih) && DateTime.TryParse(scanResult.Tarih, out var parsedDate))
+                {
+                    formattedDate = parsedDate.ToString("yyyy-MM-dd");
+                }
+
+                // Alış/Satış Tespiti
+                string detectedType = "Alis";
+                string resolvedCariAdi = "";
+                string resolvedVkn = "";
+                string saticiUnvan = scanResult.SaticiUnvan ?? "";
+                string aliciUnvan = scanResult.AliciUnvan ?? "";
+                string saticiVkn = scanResult.SaticiVkn ?? "";
+                string aliciVkn = scanResult.AliciVkn ?? "";
+
+                if (!string.IsNullOrEmpty(myCompanyName))
+                {
+                    var myCompLower = myCompanyName.Trim().ToLowerInvariant();
+                    if (saticiUnvan.ToLowerInvariant().Contains(myCompLower))
+                    {
+                        detectedType = "Satis";
+                        resolvedCariAdi = aliciUnvan;
+                        resolvedVkn = aliciVkn;
+                    }
+                    else
+                    {
+                        detectedType = "Alis";
+                        resolvedCariAdi = saticiUnvan;
+                        resolvedVkn = saticiVkn;
+                    }
+                }
+                else
+                {
+                    resolvedCariAdi = scanResult.KarsiTaraf ?? "Bilinmeyen Cari";
+                    resolvedVkn = saticiVkn;
+                }
+
+                if (string.IsNullOrEmpty(resolvedCariAdi))
+                {
+                    resolvedCariAdi = scanResult.KarsiTaraf ?? "Bilinmeyen Cari";
+                }
+
+                // Cariyi bulma
+                string pdfCariKodu = "";
+                bool pdfIsCariValid = false;
+
+                if (!string.IsNullOrEmpty(resolvedVkn))
+                {
+                    var lookupVkn = await CheckCariInMikroDbAsync(resolvedVkn);
+                    if (lookupVkn.isValid)
+                    {
+                        pdfCariKodu = lookupVkn.cariKodu;
+                        resolvedCariAdi = lookupVkn.cariAdi;
+                        pdfIsCariValid = true;
+                    }
+                }
+
+                if (!pdfIsCariValid && !string.IsNullOrEmpty(resolvedCariAdi))
+                {
+                    var lookupName = await CheckCariByNameInMikroDbAsync(resolvedCariAdi);
+                    if (lookupName.isValid)
+                    {
+                        pdfCariKodu = lookupName.cariKodu;
+                        resolvedCariAdi = lookupName.cariAdi;
+                        pdfIsCariValid = true;
+                    }
+                }
+
+                var pdfLines = new List<ParsedInvoiceLine>();
+                if (scanResult.FaturaSatirlari != null && scanResult.FaturaSatirlari.Count > 0)
+                {
+                    foreach (var line in scanResult.FaturaSatirlari)
+                    {
+                        pdfLines.Add(new ParsedInvoiceLine
+                        {
+                            Cinsi = "Hizmet",
+                            Kodu = line.MalzemeHizmetKodu ?? "760.01.001",
+                            Ismi = line.MalzemeHizmetAdi ?? "Hizmet Bedeli",
+                            Tutar = (double)line.NetTutar,
+                            KdvOrani = line.KdvOrani,
+                            Miktar = line.Miktar,
+                            BirimFiyat = (double)line.BirimFiyat,
+                            GrossTotal = (double)line.GrossTotal,
+                            Iskonto = (double)line.Iskonto,
+                            KdvTutari = (double)line.KdvTutari,
+                            NetTutar = (double)line.NetTutar,
+                            VergilerDahilToplam = (double)line.VergilerDahilToplam
+                        });
+                    }
+                }
+                else
+                {
+                    pdfLines.Add(new ParsedInvoiceLine
+                    { 
+                        Cinsi = "Hizmet", 
+                        Kodu = "760.01.001", 
+                        Ismi = !string.IsNullOrEmpty(scanResult.Aciklama) ? scanResult.Aciklama : "Banka Transfer Bedeli", 
+                        Tutar = (double)(scanResult.Tutar ?? 0.00m), 
+                        KdvOrani = 0,
+                        Miktar = 1,
+                        BirimFiyat = (double)(scanResult.Tutar ?? 0.00m),
+                        GrossTotal = (double)(scanResult.Tutar ?? 0.00m),
+                        Iskonto = 0,
+                        KdvTutari = 0,
+                        NetTutar = (double)(scanResult.Tutar ?? 0.00m),
+                        VergilerDahilToplam = (double)(scanResult.Tutar ?? 0.00m)
+                    });
+                }
+
+                double pdfAraToplam = 0;
+                double pdfKdvToplam = 0;
+                foreach (var line in pdfLines)
+                {
+                    pdfAraToplam += line.NetTutar;
+                    pdfKdvToplam += line.KdvTutari;
+                }
+                double CalculatedTotal = pdfAraToplam + pdfKdvToplam;
+
+                // Basit bir HTML şablonu oluşturalım
+                string tableRowsHtml = "";
+                int itemIndex = 1;
+                foreach (var line in pdfLines)
+                {
+                    tableRowsHtml += $@"
+                            <tr>
+                                <td style='padding: 10px; border-bottom: 1px solid #eee;'>{itemIndex++}</td>
+                                <td style='padding: 10px; border-bottom: 1px solid #eee;'>{line.Ismi}</td>
+                                <td style='padding: 10px; border-bottom: 1px solid #eee; text-align: right;'>% {line.KdvOrani:F0}</td>
+                                <td style='padding: 10px; border-bottom: 1px solid #eee; text-align: right;'>₺ {line.NetTutar:N2}</td>
+                            </tr>";
+                }
+
+                string pdfHtmlTemplate = $@"
+                <div style='font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #333; line-height: 1.5;'>
+                    <div style='display: flex; justify-content: space-between; border-bottom: 2px solid #8b5cf6; padding-bottom: 15px;'>
+                        <div>
+                            <h2 style='color: #8b5cf6; margin: 0;'>Belge Önizleme Detayı</h2>
+                            <p style='margin: 5px 0 0 0; font-size: 0.9rem;'>Belge No: <strong>{scanResult.DekontNo ?? "Belirtilmemiş"}</strong></p>
+                        </div>
+                        <div style='text-align: right;'>
+                            <p style='margin: 0; font-size: 0.9rem;'>Belge Tarihi: <strong>{formattedDate}</strong></p>
+                        </div>
+                    </div>
+                    
+                    <div style='margin: 20px 0; background-color: #f8fafc; padding: 15px; border-radius: 8px;'>
+                        <h4 style='margin: 0 0 8px 0; color: #475569;'>Banka Hesap / IBAN / Cari Detay:</h4>
+                        <p style='margin: 0; font-size: 1rem; font-weight: bold;'>{scanResult.HesapNo ?? "Belirtilmemiş"}</p>
+                    </div>
+
+                    <div style='margin: 20px 0; background-color: #f8fafc; padding: 15px; border-radius: 8px;'>
+                        <h4 style='margin: 0 0 8px 0; color: #475569;'>Müşteri / Tedarikçi (Karşı Taraf):</h4>
+                        <p style='margin: 0; font-size: 1rem; font-weight: bold;'>{resolvedCariAdi}</p>
+                        <p style='margin: 4px 0 0 0; font-size: 0.85rem; color: #64748b;'>Mikro Cari Kodu: {(!string.IsNullOrEmpty(pdfCariKodu) ? pdfCariKodu : "Kaydı Yok")}</p>
+                    </div>
+
+                    <table style='width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem;'>
+                        <thead>
+                            <tr style='background-color: #f1f5f9; font-weight: bold;'>
+                                <th style='padding: 10px; text-align: left;'>No</th>
+                                <th style='padding: 10px; text-align: left;'>Açıklama</th>
+                                <th style='padding: 10px; text-align: right;'>KDV</th>
+                                <th style='padding: 10px; text-align: right;'>Tutar</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {tableRowsHtml}
+                        </tbody>
+                    </table>
+
+                    <div style='margin-top: 20px; border-top: 2px solid #eee; padding-top: 10px; display: flex; justify-content: flex-end;'>
+                        <div style='width: 250px; font-size: 0.9rem;'>
+                            <div style='display: flex; justify-content: space-between; padding: 4px 0;'>
+                                <span>Ara Toplam (KDV Hariç):</span>
+                                <span>₺ {pdfAraToplam:N2}</span>
+                            </div>
+                            <div style='display: flex; justify-content: space-between; padding: 4px 0;'>
+                                <span>Hesaplanan KDV:</span>
+                                <span>₺ {pdfKdvToplam:N2}</span>
+                            </div>
+                            <div style='display: flex; justify-content: space-between; padding: 6px 0; border-top: 1px solid #eee; font-weight: bold; font-size: 1.05rem; color: #8b5cf6;'>
+                                <span>Genel Toplam:</span>
+                                <span>₺ {CalculatedTotal:N2}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>";
+
                 return Ok(ApiResponse<object>.Ok(new
                 {
-                    belgeNo = "PDF-" + new Random().Next(100000, 999999),
-                    tarih = DateTime.Now.ToString("yyyy-MM-dd"),
-                    vkn = "1234567890",
-                    cariAdi = "Test PDF Firması A.Ş.",
-                    cariKodu = "",
-                    isCariValid = false,
-                    invoiceLines = new List<object>
-                    {
-                        new { cinsi = "Hizmet", kodu = "760.01.001", ismi = "PDF İşlem Hizmet Bedeli", tutar = 1000.00, kdvOrani = 20 }
-                    },
-                    araToplam = 1000.00,
-                    kdvToplam = 200.00,
-                    genelToplam = 1200.00
-                }, "PDF faturası test modunda okundu."));
+                    belgeNo = scanResult.DekontNo ?? "PDF-" + new Random().Next(100000, 999999),
+                    tarih = formattedDate,
+                    vkn = resolvedVkn,
+                    cariAdi = resolvedCariAdi,
+                    cariKodu = pdfCariKodu,
+                    isCariValid = pdfIsCariValid,
+                    invoiceLines = pdfLines,
+                    araToplam = pdfAraToplam,
+                    kdvToplam = pdfKdvToplam,
+                    genelToplam = CalculatedTotal,
+                    htmlContent = pdfHtmlTemplate,
+                    detectedType = detectedType
+                }, "PDF/Görsel başarıyla okundu."));
             }
 
             // XML Çözümleme (UBL-TR Standartı)
@@ -93,22 +300,76 @@ public class DekontController : ControllerBase
             XNamespace cbc = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";
             XNamespace cac = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
 
+            // XML içinde gömülü PDF var mı kontrol edelim
+            string? base64Pdf = null;
+            var additionalDocs = doc.Root?.Elements(cac + "AdditionalDocumentReference");
+            if (additionalDocs != null)
+            {
+                foreach (var ad in additionalDocs)
+                {
+                    var docType = ad.Element(cbc + "DocumentType")?.Value;
+                    var binaryObject = ad.Element(cac + "Attachment")?.Element(cbc + "EmbeddedDocumentBinaryObject");
+                    
+                    if (binaryObject != null && (docType?.ToUpperInvariant() == "PDF" || binaryObject.Attribute("mimeCode")?.Value == "application/pdf"))
+                    {
+                        base64Pdf = binaryObject.Value?.Trim();
+                        break;
+                    }
+                }
+            }
+
             // Fatura ve Belge Bilgileri
             var belgeNo = doc.Root?.Element(cbc + "ID")?.Value ?? "";
             var tarihStr = doc.Root?.Element(cbc + "IssueDate")?.Value ?? "";
             
-            // Satıcı (Supplier / Cari) Bilgileri
+            // Satıcı (Supplier / Fatura Kesen) Bilgileri
             var supplierParty = doc.Root?.Element(cac + "AccountingSupplierParty")?.Element(cac + "Party");
-            var vkn = supplierParty?.Elements(cac + "PartyIdentification")
+            var supplierVkn = supplierParty?.Elements(cac + "PartyIdentification")
                 .FirstOrDefault(x => x.Element(cbc + "ID")?.Attribute("schemeID")?.Value == "VKN" 
                                   || x.Element(cbc + "ID")?.Attribute("schemeID")?.Value == "TCKN")
                 ?.Element(cbc + "ID")?.Value ?? "";
-
-            var cariAdi = supplierParty?.Element(cac + "PartyName")?.Element(cbc + "Name")?.Value 
+            var supplierName = supplierParty?.Element(cac + "PartyName")?.Element(cbc + "Name")?.Value 
                 ?? supplierParty?.Element(cac + "PartyLegalEntity")?.Element(cbc + "RegistrationName")?.Value 
                 ?? "";
 
-            // Satırları Çözümleme
+            // Alıcı (Customer / Fatura Kesilen) Bilgileri
+            var customerParty = doc.Root?.Element(cac + "AccountingCustomerParty")?.Element(cac + "Party");
+            var customerVkn = customerParty?.Elements(cac + "PartyIdentification")
+                .FirstOrDefault(x => x.Element(cbc + "ID")?.Attribute("schemeID")?.Value == "VKN" 
+                                  || x.Element(cbc + "ID")?.Attribute("schemeID")?.Value == "TCKN")
+                ?.Element(cbc + "ID")?.Value ?? "";
+            var customerName = customerParty?.Element(cac + "PartyName")?.Element(cbc + "Name")?.Value 
+                ?? customerParty?.Element(cac + "PartyLegalEntity")?.Element(cbc + "RegistrationName")?.Value 
+                ?? "";
+
+            // Alış/Satış Tespiti
+            string detectedTypeXml = "Alis";
+            string resolvedCariAdiXml = "";
+            string resolvedVknXml = "";
+
+            if (!string.IsNullOrEmpty(myCompanyName))
+            {
+                var myCompLower = myCompanyName.Trim().ToLowerInvariant();
+                if (supplierName.ToLowerInvariant().Contains(myCompLower))
+                {
+                    detectedTypeXml = "Satis";
+                    resolvedCariAdiXml = customerName;
+                    resolvedVknXml = customerVkn;
+                }
+                else
+                {
+                    detectedTypeXml = "Alis";
+                    resolvedCariAdiXml = supplierName;
+                    resolvedVknXml = supplierVkn;
+                }
+            }
+            else
+            {
+                resolvedCariAdiXml = supplierName;
+                resolvedVknXml = supplierVkn;
+            }
+
+            // Satırlar Çözümleme
             var lines = new List<ParsedInvoiceLine>();
             var lineElements = doc.Root?.Elements(cac + "InvoiceLine") ?? Enumerable.Empty<XElement>();
             
@@ -117,24 +378,61 @@ public class DekontController : ControllerBase
 
             foreach (var el in lineElements)
             {
-                var itemName = el.Element(cac + "Item")?.Element(cbc + "Name")?.Value ?? "Hizmet Satırı";
-                var lineAmountStr = el.Element(cbc + "LineExtensionAmount")?.Value ?? "0";
+                var itemCode = el.Element(cac + "Item")?.Element(cac + "SellersItemIdentification")?.Element(cbc + "ID")?.Value 
+                            ?? el.Element(cac + "Item")?.Element(cac + "BuyersItemIdentification")?.Element(cbc + "ID")?.Value 
+                            ?? "760.01.001";
+                var itemName = el.Element(cac + "Item")?.Element(cac + "Name")?.Value ?? "Hizmet Satırı";
+                var qtyStr = el.Element(cbc + "InvoicedQuantity")?.Value ?? "1";
+                var priceStr = el.Element(cac + "Price")?.Element(cbc + "PriceAmount")?.Value ?? "0";
+                var lineAmountStr = el.Element(cbc + "LineExtensionAmount")?.Value ?? "0"; 
                 var percentStr = el.Element(cac + "TaxTotal")?.Element(cac + "TaxSubtotal")?.Element(cbc + "Percent")?.Value ?? "20";
 
-                double.TryParse(lineAmountStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double lineAmount);
+                double.TryParse(qtyStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double qty);
+                double.TryParse(priceStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double price);
+                double.TryParse(lineAmountStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double netTutar);
                 double.TryParse(percentStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double taxPercent);
+
+                // Iskonto bulma
+                double iskonto = 0;
+                var allowance = el.Element(cac + "AllowanceCharge");
+                if (allowance != null)
+                {
+                    var chargeIndicator = allowance.Element(cbc + "ChargeIndicator")?.Value;
+                    if (chargeIndicator == "false" || chargeIndicator == "0")
+                    {
+                        var allowanceAmountStr = allowance.Element(cbc + "Amount")?.Value;
+                        double.TryParse(allowanceAmountStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out iskonto);
+                    }
+                }
+
+                double grossTotal = qty * price;
+                if (grossTotal == 0) grossTotal = netTutar + iskonto;
+
+                // KDV Tutarını oku veya hesapla
+                var taxAmountStr = el.Element(cac + "TaxTotal")?.Element(cbc + "TaxAmount")?.Value;
+                double.TryParse(taxAmountStr, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out double taxAmount);
+                if (taxAmount == 0) taxAmount = netTutar * (taxPercent / 100);
+
+                double grandTotal = netTutar + taxAmount;
 
                 lines.Add(new ParsedInvoiceLine
                 {
-                    Cinsi = "Hizmet", // Varsayılan Hizmet kartı
-                    Kodu = "760.01.001", // Varsayılan Muhasebe banka masraf kodu
+                    Cinsi = "Hizmet",
+                    Kodu = itemCode,
                     Ismi = itemName,
-                    Tutar = lineAmount,
-                    KdvOrani = taxPercent
+                    Miktar = qty,
+                    BirimFiyat = price,
+                    KdvOrani = taxPercent,
+                    GrossTotal = grossTotal,
+                    Iskonto = iskonto,
+                    KdvTutari = taxAmount,
+                    NetTutar = netTutar,
+                    VergilerDahilToplam = grandTotal,
+                    Tutar = netTutar
                 });
 
-                calculatedAraToplam += lineAmount;
-                calculatedKdvToplam += (lineAmount * (taxPercent / 100));
+                calculatedAraToplam += netTutar;
+                calculatedKdvToplam += taxAmount;
             }
 
             // Eğer satır detayları okunamadıysa, fatura toplam alanından oku
@@ -151,36 +449,45 @@ public class DekontController : ControllerBase
                     Cinsi = "Hizmet",
                     Kodu = "760.01.001",
                     Ismi = "Uyumsoft Genel Hizmet Bedeli",
-                    Tutar = calculatedAraToplam,
-                    KdvOrani = 20
+                    Miktar = 1,
+                    BirimFiyat = calculatedAraToplam,
+                    KdvOrani = 20,
+                    GrossTotal = calculatedAraToplam,
+                    Iskonto = 0,
+                    KdvTutari = calculatedKdvToplam,
+                    NetTutar = calculatedAraToplam,
+                    VergilerDahilToplam = calculatedAraToplam + calculatedKdvToplam,
+                    Tutar = calculatedAraToplam
                 });
             }
 
             // Mikro SQL Veritabanında VKN Sorgulama
-            var (cariKodu, matchedCariAdi, isCariValid) = await CheckCariInMikroDbAsync(vkn);
+            var (cariKodu, matchedCariAdi, isCariValid) = await CheckCariInMikroDbAsync(resolvedVknXml);
 
             // Eğer veritabanından eşleşen ünvan geldiyse arayüzde onu göster
             if (!string.IsNullOrEmpty(matchedCariAdi))
             {
-                cariAdi = matchedCariAdi;
+                resolvedCariAdiXml = matchedCariAdi;
             }
 
             // XML'i görsel olarak arayüzde render etmek için HTML formatına çevirme şablonu (Simüle edilmiş basit şablon)
-            var htmlTemplate = GenerateSimpleHtmlInvoice(belgeNo, tarihStr, vkn, cariAdi, lines, calculatedAraToplam, calculatedKdvToplam);
+            var htmlTemplate = GenerateSimpleHtmlInvoice(belgeNo, tarihStr, resolvedVknXml, resolvedCariAdiXml, lines, calculatedAraToplam, calculatedKdvToplam);
 
             var result = new
             {
                 belgeNo,
                 tarih = tarihStr,
-                vkn,
-                cariAdi,
+                vkn = resolvedVknXml,
+                cariAdi = resolvedCariAdiXml,
                 cariKodu,
                 isCariValid,
                 invoiceLines = lines,
                 araToplam = Math.Round(calculatedAraToplam, 2),
                 kdvToplam = Math.Round(calculatedKdvToplam, 2),
                 genelToplam = Math.Round(calculatedAraToplam + calculatedKdvToplam, 2),
-                htmlContent = htmlTemplate
+                htmlContent = htmlTemplate,
+                pdfContent = base64Pdf,
+                detectedType = detectedTypeXml
             };
 
             return Ok(ApiResponse<object>.Ok(result, "XML başarıyla çözümlendi."));
@@ -333,9 +640,9 @@ public class DekontController : ControllerBase
                 worksheet.Cell(rowIdx, 4).Value = request.CariKodu;
                 worksheet.Cell(rowIdx, 5).Value = request.Vkn;
                 worksheet.Cell(rowIdx, 6).Value = request.CariAdi;
-                worksheet.Cell(rowIdx, 7).Value = line.Tutar;
-                worksheet.Cell(rowIdx, 8).Value = line.Tutar * (line.KdvOrani / 100.0);
-                worksheet.Cell(rowIdx, 9).Value = line.Aciklama ?? request.CariAdi + " Hizmet/Stok Bedeli";
+                worksheet.Cell(rowIdx, 7).Value = line.NetTutar > 0 ? line.NetTutar : line.Tutar;
+                worksheet.Cell(rowIdx, 8).Value = line.KdvTutari >= 0 ? line.KdvTutari : (line.Tutar * (line.KdvOrani / 100.0));
+                worksheet.Cell(rowIdx, 9).Value = !string.IsNullOrEmpty(line.Aciklama) ? line.Aciklama : (string.IsNullOrEmpty(line.Ismi) ? request.CariAdi + " Hizmet/Stok Bedeli" : line.Ismi);
                 worksheet.Cell(rowIdx, 10).Value = line.Kodu;
                 worksheet.Cell(rowIdx, 11).Value = line.Ismi;
                 worksheet.Cell(rowIdx, 12).Value = "e-Fatura";
@@ -391,8 +698,8 @@ public class DekontController : ControllerBase
                     Tarih = parsedDate,
                     DekontNo = request.BelgeNo,
                     KarsiTaraf = request.CariAdi,
-                    Tutar = (decimal)line.Tutar,
-                    Masraf = (decimal)(line.Tutar * (line.KdvOrani / 100.0)),
+                    Tutar = (decimal)(line.NetTutar > 0 ? line.NetTutar : line.Tutar),
+                    Masraf = (decimal)(line.KdvTutari >= 0 ? line.KdvTutari : (line.Tutar * (line.KdvOrani / 100.0))),
                     Aciklama = line.Ismi,
                     FaturaTipi = request.FaturaTipi, // "Alis" veya "Satis"
                     KaydedenKullanici = request.CreatedBy,
@@ -411,7 +718,7 @@ public class DekontController : ControllerBase
             });
 
             await _context.SaveChangesAsync();
-            return Ok(ApiResponse<object>.Ok(null, $"{request.FaturaTipi == "Alis" ? "Alış" : "Satış"} faturası veritabanına başarıyla kaydedildi."));
+            return Ok(ApiResponse<object>.Ok(null, $"{(request.FaturaTipi == "Alis" ? "Alış" : "Satış")} faturası veritabanına başarıyla kaydedildi."));
         }
         catch (Exception ex)
         {
@@ -546,6 +853,33 @@ public class DekontController : ControllerBase
         return ("", "", false);
     }
 
+    private async Task<(string cariKodu, string cariAdi, bool isValid)> CheckCariByNameInMikroDbAsync(string cariName)
+    {
+        if (string.IsNullOrEmpty(cariName)) return ("", "", false);
+
+        try
+        {
+            using var conn = new SqlConnection(ConnectionString);
+            await conn.OpenAsync();
+
+            var cmdText = "SELECT TOP 1 cari_kod, cari_unvan1 FROM CARI_HESAPLAR WHERE cari_unvan1 LIKE @name";
+            using var cmd = new SqlCommand(cmdText, conn);
+            cmd.Parameters.AddWithValue("@name", $"%{cariName}%");
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            if (await reader.ReadAsync())
+            {
+                return (reader.GetString(0), reader.GetString(1), true);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("[API] Veritabanından Cari isme göre sorgulanırken hata (Güvenli atlama yapıldı): {Msg}", ex.Message);
+        }
+
+        return ("", "", false);
+    }
+
     private string GenerateSimpleHtmlInvoice(string belgeNo, string tarih, string vkn, string cariAdi, List<ParsedInvoiceLine> lines, double subtotal, double tax)
     {
         var rows = string.Join("\n", lines.Select((x, i) => $@"
@@ -622,4 +956,43 @@ public class ConfirmDekontRequest
     public string FaturaTipi { get; set; } = string.Empty; // "Alis" veya "Satis"
     public string CreatedBy { get; set; } = string.Empty;
     public List<ParsedInvoiceLine> Lines { get; set; } = new();
+}
+
+public class CreateCariRequest
+{
+    public string Vkn { get; set; } = string.Empty;
+    public string CariAdi { get; set; } = string.Empty;
+}
+
+public class ExportExcelRequest
+{
+    public string EvrakNo { get; set; } = string.Empty;
+    public string BelgeNo { get; set; } = string.Empty;
+    public string Tarih { get; set; } = string.Empty;
+    public string OdemeTipi { get; set; } = string.Empty;
+    public string Vkn { get; set; } = string.Empty;
+    public string CariKodu { get; set; } = string.Empty;
+    public string CariAdi { get; set; } = string.Empty;
+    public List<ParsedInvoiceLine> Lines { get; set; } = new();
+    public double AraToplam { get; set; }
+    public double KdvToplam { get; set; }
+    public double GenelToplam { get; set; }
+    public string Kullanici { get; set; } = string.Empty;
+}
+
+public class ParsedInvoiceLine
+{
+    public string Cinsi { get; set; } = "Hizmet";
+    public string Kodu { get; set; } = "760.01.001";
+    public string Ismi { get; set; } = string.Empty;
+    public double Tutar { get; set; }
+    public double KdvOrani { get; set; }
+    public double Miktar { get; set; } = 1;
+    public double BirimFiyat { get; set; }
+    public double GrossTotal { get; set; }
+    public double Iskonto { get; set; }
+    public double KdvTutari { get; set; }
+    public double NetTutar { get; set; }
+    public double VergilerDahilToplam { get; set; }
+    public string? Aciklama { get; set; }
 }

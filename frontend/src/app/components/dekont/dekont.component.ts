@@ -10,9 +10,14 @@ interface InvoiceLine {
   ismi: string;
   miktar: number;
   birimFiyat: number;
-  tutar: number; // KDV Hariç Satır Toplamı (miktar * birimFiyat)
   kdvOrani: number;
+  grossTotal: number; // Mal/Hizmet Toplam Tutarı (Miktar * BirimFiyat)
+  iskonto: number; // Toplam İskonto
+  kdvTutari: number; // Hesaplanan KDV
+  netTutar: number; // Net Tutar (GrossTotal - Iskonto)
+  vergilerDahilToplam: number; // Vergiler Dahil Toplam Tutar (NetTutar + KdvTutari)
   aciklama?: string;
+  tutar?: number; // for backward compatibility
 }
 
 @Component({
@@ -39,6 +44,10 @@ export class DekontComponent implements OnInit {
   cariAdi: string = '';
   isCariValid: boolean = false;
 
+  // Otomatik Alış/Satış Tespiti ve Şirket Adı
+  myCompanyName: string = '';
+  detectedType: 'Alis' | 'Satis' = 'Alis';
+
   // Grid Satırları
   invoiceLines: InvoiceLine[] = [];
 
@@ -50,10 +59,13 @@ export class DekontComponent implements OnInit {
   // Önizleme ve Dosya Kontrolleri
   showPreview: boolean = false;
   isPdf: boolean = false;
+  isImage: boolean = false;
   safePdfUrl: SafeResourceUrl | null = null;
+  imageUrl: string | null = null;
   htmlPreviewContent: string | null = null;
   isDragOver: boolean = false;
   loading: boolean = false;
+  imageZoomLevel: number = 1.0;
 
   // Sayfalama (Çok sayfalı PDF'ler için)
   pdfCurrentPage: number = 1;
@@ -74,6 +86,11 @@ export class DekontComponent implements OnInit {
 
   ngOnInit(): void {
     this.currentUsername = localStorage.getItem('username') || 'Sistem Kullanıcısı';
+    this.myCompanyName = localStorage.getItem('myCompanyName') || '';
+  }
+
+  saveMyCompanyName(): void {
+    localStorage.setItem('myCompanyName', this.myCompanyName);
   }
 
   // Sürükle Bırak Eventleri
@@ -107,8 +124,8 @@ export class DekontComponent implements OnInit {
   handleFile(file: File): void {
     const ext = file.name.split('.').pop()?.toLowerCase();
     
-    if (ext !== 'xml' && ext !== 'pdf') {
-      this.showStatus('Lütfen yalnızca Uyumsoft XML veya PDF belgesi yükleyiniz.', 'error', 5000);
+    if (ext !== 'xml' && ext !== 'pdf' && ext !== 'jpg' && ext !== 'jpeg' && ext !== 'png') {
+      this.showStatus('Lütfen yalnızca Uyumsoft XML, PDF veya Fiş/Dekont Görseli yükleyiniz.', 'error', 5000);
       return;
     }
 
@@ -120,10 +137,15 @@ export class DekontComponent implements OnInit {
       this.isPdf = true;
       this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(URL.createObjectURL(file));
       this.showPreview = true;
+    } else if (ext === 'jpg' || ext === 'jpeg' || ext === 'png') {
+      this.isImage = true;
+      this.imageUrl = URL.createObjectURL(file);
+      this.showPreview = true;
     }
 
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('myCompanyName', this.myCompanyName);
 
     this.http.post<any>(`${this.baseUrl}/parse-xml`, formData).subscribe({
       next: (res) => {
@@ -143,31 +165,72 @@ export class DekontComponent implements OnInit {
             this.invoiceLines = data.invoiceLines.map((line: any) => {
               const miktar = line.miktar || 1;
               const birimFiyat = line.birimFiyat || line.tutar || 0;
+              const kdvOrani = line.kdvOrani !== undefined ? line.kdvOrani : 20;
+              const grossTotal = line.grossTotal || (miktar * birimFiyat);
+              const iskonto = line.iskonto || 0;
+              const netTutar = line.netTutar || (grossTotal - iskonto);
+              const kdvTutari = line.kdvTutari || (netTutar * (kdvOrani / 100));
+              const vergilerDahilToplam = line.vergilerDahilToplam || (netTutar + kdvTutari);
+
               return {
                 cinsi: line.cinsi || 'Hizmet',
                 kodu: line.kodu || '760.01.001',
-                ismi: line.ismi || 'Uyumsoft Dekont Hizmeti',
+                ismi: line.ismi || 'Uyumsoft Hizmeti',
                 miktar: miktar,
                 birimFiyat: birimFiyat,
-                tutar: miktar * birimFiyat,
-                kdvOrani: line.kdvOrani !== undefined ? line.kdvOrani : 18
+                kdvOrani: kdvOrani,
+                grossTotal: grossTotal,
+                iskonto: iskonto,
+                kdvTutari: kdvTutari,
+                netTutar: netTutar,
+                vergilerDahilToplam: vergilerDahilToplam,
+                tutar: netTutar
               };
             });
           } else {
+            const total = data.genelToplam || 0;
             this.invoiceLines = [{
               cinsi: 'Hizmet',
               kodu: '760.01.001',
               ismi: 'Uyumsoft İşlem Hizmet Bedeli',
               miktar: 1,
-              birimFiyat: data.genelToplam || 0,
-              tutar: data.genelToplam || 0,
-              kdvOrani: 18
+              birimFiyat: total,
+              kdvOrani: 20,
+              grossTotal: total,
+              iskonto: 0,
+              kdvTutari: total * 0.20,
+              netTutar: total,
+              vergilerDahilToplam: total * 1.20,
+              tutar: total
             }];
           }
 
-          if (!this.isPdf && data.htmlContent) {
+          if (!this.isPdf && data.pdfContent) {
+            try {
+              const base64Pdf = data.pdfContent;
+              const byteCharacters = atob(base64Pdf);
+              const byteNumbers = new Array(byteCharacters.length);
+              for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+              }
+              const byteArray = new Uint8Array(byteNumbers);
+              const blob = new Blob([byteArray], { type: 'application/pdf' });
+              
+              this.safePdfUrl = this.sanitizer.bypassSecurityTrustResourceUrl(URL.createObjectURL(blob));
+              this.isPdf = true;
+              this.showPreview = true;
+            } catch (pdfErr) {
+              console.error('Embedded PDF parse hatası:', pdfErr);
+            }
+          }
+
+          if (!this.isPdf && !data.pdfContent && data.htmlContent) {
             this.htmlPreviewContent = data.htmlContent;
             this.showPreview = true;
+          }
+
+          if (data.detectedType) {
+            this.detectedType = data.detectedType as 'Alis' | 'Satis';
           }
 
           this.calculateTotals();
@@ -196,9 +259,15 @@ export class DekontComponent implements OnInit {
     this.kdvToplam = 0;
     
     this.invoiceLines.forEach(line => {
-      line.tutar = line.miktar * line.birimFiyat;
-      this.araToplam += line.tutar;
-      this.kdvToplam += (line.tutar * (line.kdvOrani / 100));
+      line.grossTotal = line.miktar * line.birimFiyat;
+      line.iskonto = line.iskonto || 0;
+      line.netTutar = line.grossTotal - line.iskonto;
+      line.kdvTutari = line.netTutar * (line.kdvOrani / 100);
+      line.vergilerDahilToplam = line.netTutar + line.kdvTutari;
+      
+      line.tutar = line.netTutar; // compatibility
+      this.araToplam += line.netTutar;
+      this.kdvToplam += line.kdvTutari;
     });
 
     this.genelToplam = this.araToplam + this.kdvToplam;
@@ -212,8 +281,13 @@ export class DekontComponent implements OnInit {
       ismi: 'Banka Masraf Gideri',
       miktar: 1,
       birimFiyat: 0,
-      tutar: 0,
-      kdvOrani: 18
+      kdvOrani: 20,
+      grossTotal: 0,
+      iskonto: 0,
+      kdvTutari: 0,
+      netTutar: 0,
+      vergilerDahilToplam: 0,
+      tutar: 0
     });
     this.calculateTotals();
   }
@@ -365,8 +439,11 @@ export class DekontComponent implements OnInit {
   resetInput(): void {
     this.showPreview = false;
     this.isPdf = false;
+    this.isImage = false;
     this.safePdfUrl = null;
+    this.imageUrl = null;
     this.htmlPreviewContent = null;
+    this.imageZoomLevel = 1.0;
     this.belgeNo = '';
     this.tarih = '';
     this.VKN = '';
@@ -397,5 +474,35 @@ export class DekontComponent implements OnInit {
 
   clearStatus(): void {
     this.statusMessage = null;
+  }
+
+  zoomInImage(): void {
+    if (this.imageZoomLevel < 4.0) {
+      this.imageZoomLevel += 0.2;
+    }
+  }
+
+  zoomOutImage(): void {
+    if (this.imageZoomLevel > 0.4) {
+      this.imageZoomLevel -= 0.2;
+    }
+  }
+
+  resetImageZoom(): void {
+    this.imageZoomLevel = 1.0;
+  }
+
+  onImageWheel(event: WheelEvent): void {
+    event.preventDefault();
+    const zoomFactor = 0.1;
+    if (event.deltaY < 0) {
+      if (this.imageZoomLevel < 4.0) {
+        this.imageZoomLevel += zoomFactor;
+      }
+    } else {
+      if (this.imageZoomLevel > 0.4) {
+        this.imageZoomLevel -= zoomFactor;
+      }
+    }
   }
 }
