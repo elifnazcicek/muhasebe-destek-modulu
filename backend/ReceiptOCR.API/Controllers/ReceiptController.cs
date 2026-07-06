@@ -204,6 +204,26 @@ public class ReceiptController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail(errorMsg));
             }
 
+            // Mükerrer Kayıt Kontrolü (Aynı Fiş Numarası ve Mağaza / VKN)
+            if (!string.IsNullOrEmpty(request.FisNo))
+            {
+                var query = _context.Expenses.AsQueryable();
+                if (!string.IsNullOrEmpty(request.VknTckn))
+                {
+                    query = query.Where(e => e.FisNo == request.FisNo && e.VknTckn == request.VknTckn.Trim());
+                }
+                else
+                {
+                    query = query.Where(e => e.FisNo == request.FisNo && e.FirmaAdi == request.MerchantName);
+                }
+
+                var exists = await query.AnyAsync();
+                if (exists)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bu fiş numarası ve firmaya ait bir fiş kaydı zaten veritabanında mevcut."));
+                }
+            }
+
             var itemsToProcess = request.Items;
             if (itemsToProcess == null || itemsToProcess.Count == 0)
             {

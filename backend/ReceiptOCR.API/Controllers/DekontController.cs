@@ -918,6 +918,13 @@ public class DekontController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail("Belge numarası boş olamaz."));
             }
 
+            // Mükerrer Fatura Kayıt Kontrolü (Belge Numarası ve Cari Kodu eşleşiyorsa)
+            var exists = await _context.Dekonts.AnyAsync(d => d.DekontNo == request.BelgeNo && d.HesapNo == request.CariKodu);
+            if (exists)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Bu belge numarası ve cari hesaba ait bir fatura/fiş kaydı zaten veritabanında mevcut."));
+            }
+
             DateTime parsedDate = DateTime.TryParse(request.Tarih, out var d) ? d : DateTime.Today;
             var savedDekonts = new List<Models.Dekont>();
 
