@@ -18,6 +18,7 @@ export class CariKayitlariComponent implements OnInit {
   filteredCaris: any[] = [];
   searchQuery = '';
   cariLimit = 100;
+  totalCarisCount = 0;
   
   // Manual Cari Add
   newCariName = '';
@@ -52,11 +53,18 @@ export class CariKayitlariComponent implements OnInit {
 
   fetchCaris(): void {
     this.loading = true;
-    this.http.get<any>(`${this.baseUrl}/list-caris?limit=${this.cariLimit}`).subscribe({
+    
+    let url = `${this.baseUrl}/list-caris?limit=${this.cariLimit}`;
+    if (this.searchQuery.trim()) {
+      url += `&search=${encodeURIComponent(this.searchQuery.trim())}`;
+    }
+
+    this.http.get<any>(url).subscribe({
       next: (res) => {
         this.loading = false;
         if (res.success && res.data) {
-          this.caris = res.data;
+          this.caris = res.data.list;
+          this.totalCarisCount = res.data.totalCount;
           this.filteredCaris = [...this.caris];
         } else {
           this.showStatus(res.message || 'Cari kayıtları yüklenemedi.', 'error');
@@ -77,15 +85,7 @@ export class CariKayitlariComponent implements OnInit {
   }
 
   onSearch(): void {
-    if (!this.searchQuery.trim()) {
-      this.filteredCaris = [...this.caris];
-    } else {
-      const q = this.searchQuery.toLowerCase();
-      this.filteredCaris = this.caris.filter(c =>
-        c.cariKodu.toLowerCase().includes(q) ||
-        c.cariAdi.toLowerCase().includes(q)
-      );
-    }
+    this.fetchCaris();
   }
 
   // Manuel Cari Ekleme

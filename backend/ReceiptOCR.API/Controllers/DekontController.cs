@@ -792,7 +792,7 @@ public class DekontController : ControllerBase
     /// Mikro veritabanındaki tüm cari kayıtlarını listeler.
     /// </summary>
     [HttpGet("list-caris")]
-    public async Task<IActionResult> ListCaris([FromQuery] int limit = 100)
+    public async Task<IActionResult> ListCaris([FromQuery] int limit = 100, [FromQuery] string? search = null)
     {
         if (limit <= 0) limit = 100;
         if (limit > 5000) limit = 5000;
@@ -803,8 +803,27 @@ public class DekontController : ControllerBase
             using var conn = new SqlConnection(ConnectionString);
             await conn.OpenAsync();
 
-            var cmdText = $"SELECT TOP {limit} cari_kod, cari_unvan1, ISNULL(cari_vkn, ISNULL(cari_tckn, '')) AS vkn FROM CARI_HESAPLAR ORDER BY cari_created_date DESC";
+            // Toplam cari sayısını al
+            var countText = "SELECT COUNT(*) FROM CARI_HESAPLAR";
+            using var countCmd = new SqlCommand(countText, conn);
+            var totalCount = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
+
+            // Filtreli sorgu veya genel sorgu
+            string cmdText;
+            if (!string.IsNullOrEmpty(search))
+            {
+                cmdText = $"SELECT TOP {limit} cari_kod, cari_unvan1, ISNULL(cari_vkn, ISNULL(cari_tckn, '')) AS vkn FROM CARI_HESAPLAR WHERE cari_kod LIKE @q OR cari_unvan1 LIKE @q ORDER BY cari_created_date DESC";
+            }
+            else
+            {
+                cmdText = $"SELECT TOP {limit} cari_kod, cari_unvan1, ISNULL(cari_vkn, ISNULL(cari_tckn, '')) AS vkn FROM CARI_HESAPLAR ORDER BY cari_created_date DESC";
+            }
+
             using var cmd = new SqlCommand(cmdText, conn);
+            if (!string.IsNullOrEmpty(search))
+            {
+                cmd.Parameters.AddWithValue("@q", $"%{search.Trim()}%");
+            }
 
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
@@ -817,12 +836,12 @@ public class DekontController : ControllerBase
                 });
             }
 
-            return Ok(ApiResponse<List<object>>.Ok(results, "Cari kayıtları listelendi."));
+            return Ok(ApiResponse<object>.Ok(new { list = results, totalCount = totalCount }, "Cari kayıtları listelendi."));
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "[API] Cari kayıtlarını listeleme hatası.");
-            return Ok(ApiResponse<List<object>>.Ok(new List<object>(), "Cari tablosu bulunamadı."));
+            return Ok(ApiResponse<object>.Ok(new { list = new List<object>(), totalCount = 0 }, "Cari tablosu bulunamadı."));
         }
     }
 
