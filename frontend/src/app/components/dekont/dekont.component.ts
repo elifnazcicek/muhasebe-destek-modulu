@@ -99,7 +99,6 @@ export class DekontComponent implements OnInit, OnDestroy {
   saveState(): void {
     const s = this.ocrState.dekontState;
     s.showPreview = this.showPreview;
-    s.previewUrl = this.previewUrl;
     s.isPdf = this.isPdf;
     s.safePdfUrl = this.safePdfUrl;
     s.pdfCurrentPage = this.pdfCurrentPage;
@@ -124,7 +123,6 @@ export class DekontComponent implements OnInit, OnDestroy {
   restoreState(): void {
     const s = this.ocrState.dekontState;
     this.showPreview = s.showPreview;
-    this.previewUrl = s.previewUrl;
     this.isPdf = s.isPdf;
     this.safePdfUrl = s.safePdfUrl;
     this.pdfCurrentPage = s.pdfCurrentPage;
