@@ -109,10 +109,24 @@
         </table>
       </div>
 
-      <!-- Daha Fazla Göster Butonu -->
-      <div *ngIf="filteredCaris.length > 0 && !loading" style="display: flex; justify-content: center; margin-top: 16px;">
-        <button type="button" class="premium-btn" (click)="showMoreCaris()" style="width: 200px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0;">
-          Daha Fazla Göster
+      <!-- Daha Fazla Göster Butonu (Aşağı Kaydırınca Çıkan Floating Pill Buton) -->
+      <div *ngIf="filteredCaris.length > 0 && filteredCaris.length < totalCarisCount && !loading && isScrolledDown" 
+           style="position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; animation: slideUp 0.3s ease-out;">
+        <button type="button" class="premium-btn" (click)="showMoreCaris()" 
+                style="width: 260px; height: 44px; background-color: #0284c7; color: #ffffff; border: none; border-radius: 9999px; box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4); font-weight: 700; transition: transform 0.2s, background-color 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" 
+                onmouseover="this.style.backgroundColor='#0369a1'; this.style.transform='scale(1.05)'" 
+                onmouseout="this.style.backgroundColor='#0284c7'; this.style.transform='scale(1)'">
+          <span>↓ Daha Fazla Göster</span>
+          <span style="background-color: rgba(255, 255, 255, 0.2); padding: 2px 8px; border-radius: 999px; font-size: 10px;">{{ filteredCaris.length }} / {{ totalCarisCount }}</span>
+        </button>
+      </div>
+
+      <!-- Sayfa Altı Sabit Daha Fazla Göster Butonu (Kullanıcı aşağı kaydırmasa da her zaman listenin altında dursun) -->
+      <div *ngIf="filteredCaris.length > 0 && filteredCaris.length < totalCarisCount && !loading && !isScrolledDown" 
+           style="display: flex; justify-content: center; margin-top: 20px;">
+        <button type="button" class="premium-btn" (click)="showMoreCaris()" 
+                style="width: 260px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 8px; font-weight: 600; cursor: pointer;">
+          Daha Fazla Göster ({{ filteredCaris.length }} / {{ totalCarisCount }})
         </button>
       </div>
 

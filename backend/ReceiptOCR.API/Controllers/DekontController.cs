@@ -1036,14 +1036,15 @@ public class DekontController : ControllerBase
     {
         try
         {
+            var today = DateTime.Today;
             List<Models.Dekont> query;
             if (string.IsNullOrEmpty(username))
             {
-                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Alis").OrderByDescending(d => d.Tarih).ToListAsync();
+                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Alis" && d.CreatedDate >= today).OrderByDescending(d => d.Tarih).ToListAsync();
             }
             else
             {
-                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Alis" && d.KaydedenKullanici == username).OrderByDescending(d => d.Tarih).ToListAsync();
+                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Alis" && d.KaydedenKullanici == username && d.CreatedDate >= today).OrderByDescending(d => d.Tarih).ToListAsync();
             }
 
             var fileBytes = GenerateExportExcel(query, "Alis_Fatura_Aktarim");
@@ -1064,14 +1065,15 @@ public class DekontController : ControllerBase
     {
         try
         {
+            var today = DateTime.Today;
             List<Models.Dekont> query;
             if (string.IsNullOrEmpty(username))
             {
-                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Satis").OrderByDescending(d => d.Tarih).ToListAsync();
+                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Satis" && d.CreatedDate >= today).OrderByDescending(d => d.Tarih).ToListAsync();
             }
             else
             {
-                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Satis" && d.KaydedenKullanici == username).OrderByDescending(d => d.Tarih).ToListAsync();
+                query = await _context.Dekonts.Where(d => d.FaturaTipi == "Satis" && d.KaydedenKullanici == username && d.CreatedDate >= today).OrderByDescending(d => d.Tarih).ToListAsync();
             }
 
             var fileBytes = GenerateExportExcel(query, "Satis_Fatura_Aktarim");

@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { OcrStateService } from '../../services/ocr-state.service';
 
 interface ReceiptItem {
   itemName: string;
@@ -20,7 +21,7 @@ interface ReceiptItem {
   templateUrl: './dashboard.component.html',
   styleUrls: ['./dashboard.component.css']
 })
-export class DashboardComponent implements OnInit {
+export class DashboardComponent implements OnInit, OnDestroy {
   leftTab: 'camera' | 'upload' = 'upload';
   showPreview: boolean = false;
   isDragOver: boolean = false;
@@ -72,13 +73,66 @@ export class DashboardComponent implements OnInit {
   currentUserRole: string = 'User';
   currentUsername: string = '';
 
-  constructor(private apiService: ApiService, private cdr: ChangeDetectorRef, private sanitizer: DomSanitizer) {}
+  constructor(
+    private apiService: ApiService,
+    private cdr: ChangeDetectorRef,
+    private sanitizer: DomSanitizer,
+    private ocrState: OcrStateService
+  ) {}
 
   ngOnInit(): void {
     this.currentUsername = localStorage.getItem('username') || '';
     this.currentUserRole = localStorage.getItem('role') || 'User';
-    this.clearForm();
+    if (this.ocrState.hasDashboardState()) {
+      this.restoreState();
+    } else {
+      this.clearForm();
+    }
     this.fetchReceiptsList();
+  }
+
+  ngOnDestroy(): void {
+    this.saveState();
+  }
+
+  saveState(): void {
+    const s = this.ocrState.dashboardState;
+    s.showPreview = this.showPreview;
+    s.previewUrl = this.previewUrl;
+    s.isPdf = this.isPdf;
+    s.safePdfUrl = this.safePdfUrl;
+    s.pdfCurrentPage = this.pdfCurrentPage;
+    s.pdfTotalPages = this.pdfTotalPages;
+    s.merchantName = this.merchantName;
+    s.vknTckn = this.vknTckn;
+    s.receiptDate = this.receiptDate;
+    s.fisNo = this.fisNo;
+    s.items = this.items;
+    s.taxAmount = this.taxAmount;
+    s.totalAmount = this.totalAmount;
+    s.imagePath = this.imagePath;
+    s.receiptId = this.receiptId;
+    s.isInspectMode = this.isInspectMode;
+  }
+
+  restoreState(): void {
+    const s = this.ocrState.dashboardState;
+    this.showPreview = s.showPreview;
+    this.previewUrl = s.previewUrl;
+    this.isPdf = s.isPdf;
+    this.safePdfUrl = s.safePdfUrl;
+    this.pdfCurrentPage = s.pdfCurrentPage;
+    this.pdfTotalPages = s.pdfTotalPages;
+    this.merchantName = s.merchantName;
+    this.vknTckn = s.vknTckn;
+    this.receiptDate = s.receiptDate;
+    this.fisNo = s.fisNo;
+    this.items = s.items;
+    this.taxAmount = s.taxAmount;
+    this.totalAmount = s.totalAmount;
+    this.imagePath = s.imagePath;
+    this.receiptId = s.receiptId;
+    this.isInspectMode = s.isInspectMode;
   }
 
   // === LEFT PANEL METHODS ===
@@ -460,6 +514,10 @@ export class DashboardComponent implements OnInit {
     this.taxAmount = Number(tax.toFixed(2));
   }
 
+  getMatrahSum(): number {
+    return Number(this.items.reduce((sum, item) => sum + (item.unitPrice || 0), 0).toFixed(2));
+  }
+
   clearFormInputsOnly(): void {
     this.isInspectMode = false;
     this.receiptId = null;
@@ -502,6 +560,28 @@ export class DashboardComponent implements OnInit {
     this.pdfDocument = null;
     this.pdfCurrentPage = 1;
     this.pdfTotalPages = 0;
+
+    if (this.ocrState) {
+      this.ocrState.dashboardState = {
+        showPreview: false,
+        previewUrl: null,
+        isPdf: false,
+        safePdfUrl: null,
+        pdfCurrentPage: 1,
+        pdfTotalPages: 1,
+        merchantName: '',
+        vknTckn: '',
+        receiptDate: new Date().toISOString().substring(0, 10),
+        fisNo: '',
+        items: [],
+        taxAmount: 0,
+        totalAmount: 0,
+        imagePath: null,
+        receiptId: null,
+        isInspectMode: false
+      };
+    }
+
     this.resetInput();
     this.cdr.detectChanges(); // Temizlendikten sonra arayüzü zorla yenile
   }

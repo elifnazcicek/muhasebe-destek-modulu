@@ -1,8 +1,9 @@
-import { Component, OnInit, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
+import { OcrStateService } from '../../services/ocr-state.service';
 
 interface InvoiceLine {
   cinsi: 'Hizmet' | 'Stok';
@@ -27,7 +28,7 @@ interface InvoiceLine {
   templateUrl: './dekont.component.html',
   styleUrl: './dekont.component.css'
 })
-export class DekontComponent implements OnInit {
+export class DekontComponent implements OnInit, OnDestroy {
   @ViewChild('fileInput') fileInput!: ElementRef;
 
   private baseUrl = 'http://localhost:5000/api/dekont';
@@ -81,12 +82,68 @@ export class DekontComponent implements OnInit {
   constructor(
     private http: HttpClient,
     private cdr: ChangeDetectorRef,
-    private sanitizer: DomSanitizer
+    private sanitizer: DomSanitizer,
+    private ocrState: OcrStateService
   ) {}
 
   ngOnInit(): void {
     this.currentUsername = localStorage.getItem('username') || 'Sistem Kullanıcısı';
     this.myCompanyName = localStorage.getItem('myCompanyName') || '';
+    this.restoreState();
+  }
+
+  ngOnDestroy(): void {
+    this.saveState();
+  }
+
+  saveState(): void {
+    const s = this.ocrState.dekontState;
+    s.showPreview = this.showPreview;
+    s.previewUrl = this.previewUrl;
+    s.isPdf = this.isPdf;
+    s.safePdfUrl = this.safePdfUrl;
+    s.pdfCurrentPage = this.pdfCurrentPage;
+    s.pdfTotalPages = this.pdfTotalPages;
+    s.evrakNo = this.evrakNo;
+    s.belgeNo = this.belgeNo;
+    s.tarih = this.tarih;
+    s.odemeTipi = this.odemeTipi;
+    s.VKN = this.VKN;
+    s.cariKodu = this.cariKodu;
+    s.cariAdi = this.cariAdi;
+    s.isCariValid = this.isCariValid;
+    s.detectedType = this.detectedType;
+    s.invoiceLines = this.invoiceLines;
+    s.araToplam = this.araToplam;
+    s.kdvToplam = this.kdvToplam;
+    s.genelToplam = this.genelToplam;
+    s.imageUrl = this.imageUrl;
+    s.htmlPreviewContent = this.htmlPreviewContent;
+  }
+
+  restoreState(): void {
+    const s = this.ocrState.dekontState;
+    this.showPreview = s.showPreview;
+    this.previewUrl = s.previewUrl;
+    this.isPdf = s.isPdf;
+    this.safePdfUrl = s.safePdfUrl;
+    this.pdfCurrentPage = s.pdfCurrentPage;
+    this.pdfTotalPages = s.pdfTotalPages;
+    this.evrakNo = s.evrakNo;
+    this.belgeNo = s.belgeNo;
+    this.tarih = s.tarih;
+    this.odemeTipi = s.odemeTipi;
+    this.VKN = s.VKN;
+    this.cariKodu = s.cariKodu;
+    this.cariAdi = s.cariAdi;
+    this.isCariValid = s.isCariValid;
+    this.detectedType = s.detectedType;
+    this.invoiceLines = s.invoiceLines;
+    this.araToplam = s.araToplam;
+    this.kdvToplam = s.kdvToplam;
+    this.genelToplam = s.genelToplam;
+    this.imageUrl = s.imageUrl;
+    this.htmlPreviewContent = s.htmlPreviewContent;
   }
 
   saveMyCompanyName(): void {
@@ -482,6 +539,33 @@ export class DekontComponent implements OnInit {
     this.kdvToplam = 0;
     this.genelToplam = 0;
     this.clearStatus();
+
+    if (this.ocrState) {
+      this.ocrState.dekontState = {
+        showPreview: false,
+        previewUrl: null,
+        isPdf: false,
+        safePdfUrl: null,
+        pdfCurrentPage: 1,
+        pdfTotalPages: 1,
+        evrakNo: 'F2026-AUTO',
+        belgeNo: '',
+        tarih: '',
+        odemeTipi: 'Açık Hesap',
+        VKN: '',
+        cariKodu: '',
+        cariAdi: '',
+        isCariValid: false,
+        detectedType: 'Alis',
+        invoiceLines: [],
+        araToplam: 0,
+        kdvToplam: 0,
+        genelToplam: 0,
+        imageUrl: null,
+        htmlPreviewContent: null
+      };
+    }
+
     if (this.fileInput) {
       this.fileInput.nativeElement.value = '';
     }

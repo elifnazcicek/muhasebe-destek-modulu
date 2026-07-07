@@ -1,4 +1,4 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
@@ -19,6 +19,12 @@ export class CariKayitlariComponent implements OnInit {
   searchQuery = '';
   cariLimit = 100;
   totalCarisCount = 0;
+  isScrolledDown = false;
+
+  @HostListener('window:scroll', [])
+  onWindowScroll() {
+    this.isScrolledDown = window.scrollY > 150;
+  }
   
   // Manual Cari Add
   newCariName = '';
@@ -109,8 +115,11 @@ export class CariKayitlariComponent implements OnInit {
         if (res.success) {
           this.newCariName = '';
           this.newCariVkn = '';
-          this.showStatus('Cari kartı başarıyla oluşturuldu!', 'success', 5000);
+          this.showStatus('Cari kartı başarıyla oluşturuldu! Sayfa yenileniyor...', 'success', 5000);
           this.fetchCaris();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         } else {
           this.showStatus(res.message || 'Cari oluşturulamadı.', 'error');
         }
@@ -173,8 +182,11 @@ export class CariKayitlariComponent implements OnInit {
         this.loading = false;
         if (res.success && res.data) {
           const count = res.data.addedCount;
-          this.showStatus(`Excel başarıyla okundu! ${count} adet yeni cari veritabanına eklendi.`, 'success', 6000);
+          this.showStatus(`Excel başarıyla okundu! ${count} adet yeni cari veritabanına eklendi. Sayfa yenileniyor...`, 'success', 6000);
           this.fetchCaris();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1800);
         } else {
           this.showStatus(res.message || 'Excel dosyası işlenemedi.', 'error');
         }

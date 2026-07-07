@@ -173,6 +173,15 @@
                   </td>
                 </tr>
               </tbody>
+              <tfoot>
+                <tr style="background-color: #f8fafc; font-weight: 700; border-top: 2px solid #e2e8f0; font-size: 13px;">
+                  <td style="padding: 10px; text-align: left; color: #475569;">Hesaplanan KDV Toplamı:</td>
+                  <td style="padding: 10px; color: #334155;">₺{{ getMatrahSum() | number:'1.2-2' }}</td>
+                  <td style="padding: 10px; color: #0284c7;">₺{{ taxAmount | number:'1.2-2' }}</td>
+                  <td style="padding: 10px; color: #0f172a;">₺{{ totalAmount | number:'1.2-2' }}</td>
+                  <td></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         </div>

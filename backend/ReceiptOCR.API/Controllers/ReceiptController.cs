@@ -669,16 +669,19 @@ public class ReceiptController : ControllerBase
             headerRow.Style.Font.Bold = true;
             headerRow.Style.Fill.BackgroundColor = XLColor.LightGray;
 
-            // Filtreleme (eğer username gönderilmişse sadece onun verilerini getir)
+            // Filtreleme (Sadece bugünkü veriler ve eğer username gönderilmişse sadece onun verileri)
+            var today = DateTime.Today;
             List<Expense> dbExpenses;
             if (string.IsNullOrEmpty(username))
             {
-                dbExpenses = await _context.Expenses.OrderByDescending(e => e.Tarih).ToListAsync();
+                dbExpenses = await _context.Expenses
+                    .Where(e => e.CreatedDate >= today)
+                    .OrderByDescending(e => e.Tarih).ToListAsync();
             }
             else
             {
                 dbExpenses = await _context.Expenses
-                    .Where(e => e.KaydedenKullanici == username)
+                    .Where(e => e.KaydedenKullanici == username && e.CreatedDate >= today)
                     .OrderByDescending(e => e.Tarih)
                     .ToListAsync();
             }
