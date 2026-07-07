@@ -152,6 +152,9 @@ export class DekontComponent implements OnInit, OnDestroy {
 
   onCariKoduChange(): void {
     this.isCariValid = !!(this.cariKodu && this.cariKodu.trim() !== '');
+    if (this.isCariValid && this.statusMessage === "Belge çözümlendi ancak Cari Kartı Mikro'da bulunamadı! Lütfen kart oluşturun.") {
+      this.clearStatus();
+    }
   }
 
   // Sürükle Bırak Eventleri
