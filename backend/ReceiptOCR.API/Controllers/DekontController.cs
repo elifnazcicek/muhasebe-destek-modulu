@@ -314,6 +314,16 @@ public class DekontController : ControllerBase
                     </div>
                 </div>";
 
+                // Mükerrer kontrolü (PDF/Görsel için)
+                if (!string.IsNullOrEmpty(scanResult.DekontNo) && !string.IsNullOrEmpty(pdfCariKodu))
+                {
+                    var exists = await _context.Dekonts.AnyAsync(d => d.DekontNo == scanResult.DekontNo && d.HesapNo == pdfCariKodu);
+                    if (exists)
+                    {
+                        return BadRequest(ApiResponse<object>.Fail($"Bu fatura (Belge No: {scanResult.DekontNo}) sisteme daha önce kaydedilmiştir."));
+                    }
+                }
+
                 return Ok(ApiResponse<object>.Ok(new
                 {
                     belgeNo = scanResult.DekontNo ?? "PDF-" + new Random().Next(100000, 999999),
@@ -507,6 +517,16 @@ public class DekontController : ControllerBase
 
             // XML'i görsel olarak arayüzde render etmek için HTML formatına çevirme şablonu (Simüle edilmiş basit şablon)
             var htmlTemplate = GenerateSimpleHtmlInvoice(belgeNo, tarihStr, resolvedVknXml, resolvedCariAdiXml, lines, calculatedAraToplam, calculatedKdvToplam);
+
+            // Mükerrer Kontrolü (XML için)
+            if (!string.IsNullOrEmpty(belgeNo) && !string.IsNullOrEmpty(cariKodu))
+            {
+                var exists = await _context.Dekonts.AnyAsync(d => d.DekontNo == belgeNo && d.HesapNo == cariKodu);
+                if (exists)
+                {
+                    return BadRequest(ApiResponse<object>.Fail($"Bu fatura (Belge No: {belgeNo}) sisteme daha önce kaydedilmiştir."));
+                }
+            }
 
             var result = new
             {

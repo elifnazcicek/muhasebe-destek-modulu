@@ -166,6 +166,19 @@ public class ReceiptController : ControllerBase
                 return BadRequest(ApiResponse<object>.Fail("Gemini API'den sonuç alınamadı."));
             }
 
+            // Mükerrer kontrolü
+            if (!string.IsNullOrEmpty(result.FisNo))
+            {
+                var cleanVkn = string.IsNullOrEmpty(result.VknTckn) ? "" : new string(result.VknTckn.Where(char.IsDigit).ToArray());
+                var exists = await _context.Expenses.AnyAsync(e => e.FisNo == result.FisNo && 
+                    ((!string.IsNullOrEmpty(cleanVkn) && e.VknTckn == cleanVkn) || e.FirmaAdi == result.FirmaAdi));
+                
+                if (exists)
+                {
+                    return BadRequest(ApiResponse<object>.Fail($"Bu fiş (Fiş No: {result.FisNo}) sisteme daha önce kaydedilmiştir."));
+                }
+            }
+
             var response = new
             {
                 data = result,
