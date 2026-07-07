@@ -496,7 +496,6 @@ export class DekontComponent implements OnInit, OnDestroy {
         this.loading = false;
         if (res.success) {
           this.showStatus(`${faturaTipi === 'Alis' ? 'Alış' : 'Satış'} faturası başarıyla kaydedildi!`, 'success', 6000);
-          this.downloadSingleExcel(faturaTipi);
         } else {
           this.showStatus(res.message || 'Fatura kaydedilemedi.', 'error');
         }
