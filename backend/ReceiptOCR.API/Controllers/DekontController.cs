@@ -695,7 +695,11 @@ public class DekontController : ControllerBase
 
             // 3. Son kullanılan Cari kodunu alarak yeni bir kod üret (Örn: 120.01.XXX)
             string nextCariKod = "120.01.001";
-            var selectCmdText = "SELECT TOP 1 cari_kod FROM CARI_HESAPLAR WHERE cari_kod LIKE '120.01.%' ORDER BY cari_kod DESC";
+            var selectCmdText = @"
+                SELECT TOP 1 cari_kod FROM CARI_HESAPLAR 
+                WHERE cari_kod LIKE '120.01.%' 
+                  AND ISNUMERIC(REPLACE(cari_kod, '120.01.', '')) = 1 
+                ORDER BY CAST(REPLACE(cari_kod, '120.01.', '') AS INT) DESC";
             
             using (var selectCmd = new SqlCommand(selectCmdText, conn))
             {
@@ -708,6 +712,33 @@ public class DekontController : ControllerBase
                         nextCariKod = $"120.01.{(num + 1):D3}";
                     }
                 }
+            }
+
+            // Benzersizliği kesinleştirmek için döngüsel kontrol
+            bool codeExists = true;
+            int safetyCounter = 0;
+            while (codeExists && safetyCounter < 100)
+            {
+                var checkCodeCmdText = "SELECT COUNT(*) FROM CARI_HESAPLAR WHERE cari_kod = @kod";
+                using (var checkCodeCmd = new SqlCommand(checkCodeCmdText, conn))
+                {
+                    checkCodeCmd.Parameters.AddWithValue("@kod", nextCariKod);
+                    codeExists = (int)(await checkCodeCmd.ExecuteScalarAsync() ?? 0) > 0;
+                    if (codeExists)
+                    {
+                        var lastNumStr = nextCariKod.Split('.').Last();
+                        if (int.TryParse(lastNumStr, out int num))
+                        {
+                            nextCariKod = $"120.01.{(num + 1):D3}";
+                        }
+                        else
+                        {
+                            nextCariKod = "120.01." + Guid.NewGuid().ToString().Substring(0, 5);
+                            break;
+                        }
+                    }
+                }
+                safetyCounter++;
             }
 
             // 4. Mikro CARI_HESAPLAR tablosuna yeni cariyi ekle

@@ -93,6 +93,10 @@ export class DekontComponent implements OnInit {
     localStorage.setItem('myCompanyName', this.myCompanyName);
   }
 
+  onCariKoduChange(): void {
+    this.isCariValid = !!(this.cariKodu && this.cariKodu.trim() !== '');
+  }
+
   // Sürükle Bırak Eventleri
   onDragOver(event: DragEvent): void {
     event.preventDefault();
@@ -404,12 +408,12 @@ export class DekontComponent implements OnInit {
     });
   }
 
-  // Uyumsoft faturalarını veritabanına kaydetme (Alış / Satış Olarak)
   saveAs(faturaTipi: 'Alis' | 'Satis'): void {
-    if (!this.isCariValid) {
-      this.showStatus('Lütfen kaydetmeden önce cari kartını eşleştiriniz.', 'error', 5000);
+    if (!this.cariKodu || !this.cariKodu.trim()) {
+      this.showStatus('Lütfen kaydetmeden önce cari kodunu giriniz veya eşleştiriniz.', 'error', 5000);
       return;
     }
+    this.isCariValid = true;
 
     this.loading = true;
     this.showStatus('Fatura veritabanına kaydediliyor...', 'info');
