@@ -556,13 +556,19 @@ export class DekontComponent implements OnInit, OnDestroy {
         if (res.success) {
           this.showStatus(`${faturaTipi === 'Alis' ? 'Alış' : 'Satış'} faturası başarıyla kaydedildi!`, 'success', 6000);
           
-          if (this.parsedInvoices[this.selectedInvoiceIndex]) {
-            this.parsedInvoices[this.selectedInvoiceIndex].saved = true;
-          }
+          if (this.isPdf && this.pdfCurrentPage < this.pdfTotalPages) {
+            this.nextPdfPage();
+          } else if (this.parsedInvoices.length > 0) {
+            if (this.parsedInvoices[this.selectedInvoiceIndex]) {
+              this.parsedInvoices[this.selectedInvoiceIndex].saved = true;
+            }
 
-          const nextUnsavedIdx = this.parsedInvoices.findIndex((inv, idx) => !inv.saved && idx !== this.selectedInvoiceIndex);
-          if (nextUnsavedIdx !== -1) {
-            this.selectInvoice(nextUnsavedIdx);
+            const nextUnsavedIdx = this.parsedInvoices.findIndex((inv, idx) => !inv.saved && idx !== this.selectedInvoiceIndex);
+            if (nextUnsavedIdx !== -1) {
+              this.selectInvoice(nextUnsavedIdx);
+            } else {
+              this.resetInput();
+            }
           } else {
             this.resetInput();
           }
@@ -579,13 +585,35 @@ export class DekontComponent implements OnInit, OnDestroy {
     });
   }
 
+  clearFormOnly(): void {
+    this.belgeNo = '';
+    this.tarih = '';
+    this.VKN = '';
+    this.cariKodu = '';
+    this.cariAdi = '';
+    this.isCariValid = false;
+    this.invoiceLines = [];
+    this.araToplam = 0;
+    this.kdvToplam = 0;
+    this.genelToplam = 0;
+    this.clearStatus();
+  }
+
   // Önizleme Sayfa Navigasyonu (PDF'ler için)
   prevPdfPage(): void {
-    if (this.pdfCurrentPage > 1) this.pdfCurrentPage--;
+    if (this.pdfCurrentPage > 1) {
+      this.pdfCurrentPage--;
+      this.clearFormOnly();
+      this.renderPdfPage();
+    }
   }
 
   nextPdfPage(): void {
-    if (this.pdfCurrentPage < this.pdfTotalPages) this.pdfCurrentPage++;
+    if (this.pdfCurrentPage < this.pdfTotalPages) {
+      this.pdfCurrentPage++;
+      this.clearFormOnly();
+      this.renderPdfPage();
+    }
   }
 
   // Ekranı Sıfırla
@@ -612,6 +640,9 @@ export class DekontComponent implements OnInit, OnDestroy {
     this.genelToplam = 0;
     this.parsedInvoices = [];
     this.selectedInvoiceIndex = 0;
+    this.pdfDocument = null;
+    this.pdfCurrentPage = 1;
+    this.pdfTotalPages = 1;
     this.clearStatus();
 
     if (this.ocrState) {
@@ -729,8 +760,8 @@ export class DekontComponent implements OnInit, OnDestroy {
             this.pdfDocument = pdf;
             this.pdfTotalPages = pdf.numPages;
             this.pdfCurrentPage = 1;
-            
-            this.scanPdfPageSequentially(1);
+            this.isPdf = true;
+            this.renderPdfPage();
           },
           (err: any) => {
             this.loading = false;
@@ -747,24 +778,13 @@ export class DekontComponent implements OnInit, OnDestroy {
     reader.readAsArrayBuffer(file);
   }
 
-  scanPdfPageSequentially(pageNum: number): void {
-    if (!this.pdfDocument || pageNum > this.pdfTotalPages) {
-      this.loading = false;
-      if (this.parsedInvoices.length > 0) {
-        this.selectedInvoiceIndex = 0;
-        this.selectInvoice(0);
-        this.showStatus(`PDF başarıyla çözümlendi. Toplam ${this.parsedInvoices.length} fatura bulundu.`, 'success', 6000);
-      } else {
-        this.showStatus('PDF içinde fatura verisi bulunamadı.', 'error', 5000);
-      }
-      this.cdr.detectChanges();
-      return;
-    }
-
-    this.showStatus(`PDF Çözümleniyor: Sayfa ${pageNum} / ${this.pdfTotalPages}...`, 'info');
+  renderPdfPage(): void {
+    if (!this.pdfDocument) return;
+    this.loading = true;
+    this.showStatus(`Sayfa ${this.pdfCurrentPage} yükleniyor ve çözümleniyor...`, 'info');
     this.cdr.detectChanges();
 
-    this.pdfDocument.getPage(pageNum).then((page: any) => {
+    this.pdfDocument.getPage(this.pdfCurrentPage).then((page: any) => {
       const viewport = page.getViewport({ scale: 2.0 });
       const canvas = document.createElement('canvas');
       canvas.width = viewport.width;
@@ -777,85 +797,103 @@ export class DekontComponent implements OnInit, OnDestroy {
       };
 
       page.render(renderContext).promise.then(() => {
+        this.imageUrl = canvas.toDataURL('image/jpeg', 0.90);
+        this.isImage = true;
+        this.showPreview = true;
+
         canvas.toBlob((blob) => {
           if (blob) {
-            const pageFile = new File([blob], `pdf_page_${pageNum}.jpg`, { type: 'image/jpeg' });
-            const pageImageUrl = URL.createObjectURL(blob);
-
+            const pageFile = new File([blob], `pdf_page_${this.pdfCurrentPage}.jpg`, { type: 'image/jpeg' });
+            
             const formData = new FormData();
             formData.append('file', pageFile);
             formData.append('myCompanyName', this.myCompanyName);
 
             this.http.post<any>(`${this.baseUrl}/parse-xml`, formData).subscribe({
               next: (res) => {
+                this.loading = false;
                 if (res.success && res.data) {
-                  const list = Array.isArray(res.data) ? res.data : [res.data];
-                  
-                  list.forEach((item: any) => {
-                    let lines = [];
-                    if (item.invoiceLines && item.invoiceLines.length > 0) {
-                      lines = item.invoiceLines.map((line: any) => {
-                        const miktar = line.miktar || 1;
-                        const birimFiyat = line.birimFiyat || line.tutar || 0;
-                        const kdvOrani = line.kdvOrani !== undefined ? line.kdvOrani : 20;
-                        const grossTotal = line.grossTotal || (miktar * birimFiyat);
-                        const iskonto = line.iskonto || 0;
-                        const netTutar = line.netTutar || (grossTotal - iskonto);
-                        const kdvTutari = line.kdvTutari || (netTutar * (kdvOrani / 100));
-                        const vergilerDahilToplam = line.vergilerDahilToplam || (netTutar + kdvTutari);
+                  const data = Array.isArray(res.data) ? res.data[0] : res.data;
+                  if (!data) {
+                    this.showStatus('Fatura verisi çözümlenemedi.', 'error');
+                    this.cdr.detectChanges();
+                    return;
+                  }
 
-                        return {
-                          cinsi: line.cinsi || 'Hizmet',
-                          kodu: line.kodu !== undefined && line.kodu !== null ? line.kodu : '',
-                          ismi: line.ismi !== undefined && line.ismi !== null ? line.ismi : '',
-                          miktar: miktar,
-                          birimFiyat: birimFiyat,
-                          kdvOrani: kdvOrani,
-                          grossTotal: grossTotal,
-                          iskonto: iskonto,
-                          kdvTutari: kdvTutari,
-                          netTutar: netTutar,
-                          vergilerDahilToplam: vergilerDahilToplam,
-                          tutar: netTutar
-                        };
-                      });
-                    } else {
-                      const total = item.genelToplam || 0;
-                      lines = [{
-                        cinsi: 'Hizmet',
-                        kodu: '',
-                        ismi: '',
-                        miktar: 1,
-                        birimFiyat: total,
-                        kdvOrani: 20,
-                        grossTotal: total,
-                        iskonto: 0,
-                        kdvTutari: total * 0.20,
-                        netTutar: total,
-                        vergilerDahilToplam: total * 1.20,
-                        tutar: total
-                      }];
-                    }
+                  this.belgeNo = data.belgeNo || '';
+                  this.tarih = data.tarih ? data.tarih.substring(0, 10) : '';
+                  this.VKN = data.vkn || '';
+                  this.cariAdi = data.cariAdi || '';
+                  this.cariKodu = data.cariKodu || '';
+                  this.isCariValid = data.isCariValid || false;
+                  this.detectedType = (data.detectedType || 'Alis') as 'Alis' | 'Satis';
 
-                    this.parsedInvoices.push({
-                      ...item,
-                      invoiceLines: lines,
-                      saved: false,
-                      pageImageUrl: pageImageUrl
+                  if (data.invoiceLines && data.invoiceLines.length > 0) {
+                    this.invoiceLines = data.invoiceLines.map((line: any) => {
+                      const miktar = line.miktar || 1;
+                      const birimFiyat = line.birimFiyat || line.tutar || 0;
+                      const kdvOrani = line.kdvOrani !== undefined ? line.kdvOrani : 20;
+                      const grossTotal = line.grossTotal || (miktar * birimFiyat);
+                      const iskonto = line.iskonto || 0;
+                      const netTutar = line.netTutar || (grossTotal - iskonto);
+                      const kdvTutari = line.kdvTutari || (netTutar * (kdvOrani / 100));
+                      const vergilerDahilToplam = line.vergilerDahilToplam || (netTutar + kdvTutari);
+
+                      return {
+                        cinsi: line.cinsi || 'Hizmet',
+                        kodu: line.kodu !== undefined && line.kodu !== null ? line.kodu : '',
+                        ismi: line.ismi !== undefined && line.ismi !== null ? line.ismi : '',
+                        miktar: miktar,
+                        birimFiyat: birimFiyat,
+                        kdvOrani: kdvOrani,
+                        grossTotal: grossTotal,
+                        iskonto: iskonto,
+                        kdvTutari: kdvTutari,
+                        netTutar: netTutar,
+                        vergilerDahilToplam: vergilerDahilToplam,
+                        tutar: netTutar
+                      };
                     });
-                  });
+                  } else {
+                    const total = data.genelToplam || 0;
+                    this.invoiceLines = [{
+                      cinsi: 'Hizmet',
+                      kodu: '',
+                      ismi: '',
+                      miktar: 1,
+                      birimFiyat: total,
+                      kdvOrani: 20,
+                      grossTotal: total,
+                      iskonto: 0,
+                      kdvTutari: total * 0.20,
+                      netTutar: total,
+                      vergilerDahilToplam: total * 1.20,
+                      tutar: total
+                    }];
+                  }
+
+                  this.calculateTotals();
+
+                  if (data.isDuplicate) {
+                    this.showStatus('Bu fatura veritabanında zaten kayıtlı!', 'error');
+                  } else if (this.isCariValid) {
+                    this.showStatus('Fatura başarıyla çözümlendi ve cari eşleştirildi.', 'success', 5000);
+                  } else {
+                    this.showStatus('Belge çözümlendi ancak Cari Kartı Mikro\'da bulunamadı! Lütfen kart oluşturun.', 'error');
+                  }
+                } else {
+                  this.showStatus(res.message || 'Çözümleme başarısız oldu.', 'error');
                 }
-                
-                this.scanPdfPageSequentially(pageNum + 1);
+                this.cdr.detectChanges();
               },
               error: (err) => {
-                console.error(`Sayfa ${pageNum} taranamadı:`, err);
-                this.scanPdfPageSequentially(pageNum + 1);
+                this.loading = false;
+                this.showStatus(err.error?.message || 'Sunucuyla bağlantı kurulamadı. Dosya okuma hatası.', 'error');
+                this.cdr.detectChanges();
               }
             });
-          } else {
-            this.scanPdfPageSequentially(pageNum + 1);
           }
+          this.cdr.detectChanges();
         }, 'image/jpeg', 0.90);
       });
     });
