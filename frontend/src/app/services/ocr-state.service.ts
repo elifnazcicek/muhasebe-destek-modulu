@@ -32,21 +32,8 @@ export class OcrStateService {
     safePdfUrl: null,
     pdfCurrentPage: 1,
     pdfTotalPages: 1,
-    evrakNo: 'F2026-AUTO',
-    belgeNo: '',
-    tarih: '',
-    odemeTipi: 'Açık Hesap',
-    VKN: '',
-    cariKodu: '',
-    cariAdi: '',
-    isCariValid: false,
-    detectedType: 'Alis',
-    invoiceLines: [],
-    araToplam: 0,
-    kdvToplam: 0,
-    genelToplam: 0,
-    imageUrl: null,
-    htmlPreviewContent: null
+    parsedInvoices: [],
+    selectedInvoiceIndex: 0
   };
 
   hasDashboardState(): boolean {
@@ -54,6 +41,6 @@ export class OcrStateService {
   }
 
   hasDekontState(): boolean {
-    return this.dekontState.previewUrl !== null || this.dekontState.belgeNo !== '';
+    return this.dekontState.previewUrl !== null || (this.dekontState.parsedInvoices && this.dekontState.parsedInvoices.length > 0);
   }
 }

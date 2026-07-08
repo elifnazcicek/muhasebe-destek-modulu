@@ -90,6 +90,25 @@
         <span>{{ statusMessage }}</span>
       </div>
 
+      <!-- Çoklu Fatura Sekmeleri (Tab Bar) -->
+      <div *ngIf="parsedInvoices.length > 1" class="invoice-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 8px; border-bottom: 1px solid #e2e8f0; scrollbar-width: thin;">
+        <button type="button" *ngFor="let inv of parsedInvoices; let idx = index" 
+                class="tab-btn" 
+                [class.active]="selectedInvoiceIndex === idx" 
+                (click)="selectInvoice(idx)"
+                style="display: flex; align-items: center; gap: 6px; padding: 6px 12px; border-radius: 6px; font-weight: 600; font-size: 11px; border: 1.5px solid #cbd5e1; background-color: #ffffff; cursor: pointer; transition: all 0.2s; white-space: nowrap;"
+                [style.borderColor]="selectedInvoiceIndex === idx ? '#0284c7' : (inv.saved ? '#10b981' : (inv.isDuplicate ? '#f59e0b' : '#cbd5e1'))"
+                [style.backgroundColor]="selectedInvoiceIndex === idx ? '#f0f9ff' : (inv.saved ? '#ecfdf5' : '#ffffff')"
+                [style.color]="selectedInvoiceIndex === idx ? '#0284c7' : (inv.saved ? '#047857' : (inv.isDuplicate ? '#d97706' : '#475569'))">
+          
+          <span *ngIf="inv.saved" style="color: #10b981; font-weight: bold; font-size: 12px;">✓</span>
+          <span *ngIf="!inv.saved && inv.isDuplicate" style="color: #f59e0b; font-weight: bold; font-size: 11px;" title="Veritabanında kayıtlı">⚠️</span>
+          <span *ngIf="!inv.saved && !inv.isDuplicate && !inv.isCariValid" style="color: #ef4444; font-weight: bold; font-size: 11px;" title="Cari bulunamadı">❌</span>
+          
+          <span>{{ inv.belgeNo || 'Belge ' + (idx + 1) }}</span>
+        </button>
+      </div>
+
       <form style="display: flex; flex-direction: column; flex: 1;">
         
         <!-- Üst Grid Alanı -->
@@ -221,8 +240,9 @@
           <button type="button" class="btn btn-secondary" (click)="addNewLine()" [disabled]="VKN === ''" style="flex: 0.8;">
             Satır Ekle
           </button>
-          <button type="button" class="btn btn-primary" style="flex: 2.2;" (click)="saveAs(detectedType)" [disabled]="!isCariValid || VKN === '' || loading">
-            Kaydet
+          <button type="button" class="btn btn-primary" style="flex: 2.2;" (click)="saveAs(detectedType)" 
+                  [disabled]="!isCariValid || VKN === '' || loading || (parsedInvoices.length > 0 && (parsedInvoices[selectedInvoiceIndex]?.isDuplicate || parsedInvoices[selectedInvoiceIndex]?.saved))">
+            {{ parsedInvoices.length > 0 && parsedInvoices[selectedInvoiceIndex]?.saved ? 'Kaydedildi' : (parsedInvoices.length > 0 && parsedInvoices[selectedInvoiceIndex]?.isDuplicate ? 'Kayıtlı (Mükerrer)' : 'Kaydet') }}
           </button>
         </div>
 

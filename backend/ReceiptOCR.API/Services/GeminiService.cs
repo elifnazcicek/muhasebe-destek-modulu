@@ -130,7 +130,7 @@ JSON Şeması:
             }
         }
 
-        public async Task<ExtractedDekontData?> ScanDekontAsync(byte[] fileBytes, string mimeType = "image/jpeg")
+        public async Task<List<ExtractedDekontData>?> ScanDekontAsync(byte[] fileBytes, string mimeType = "image/jpeg")
         {
             var apiKey = _configuration["Gemini:ApiKey"];
             var modelName = _configuration["Gemini:ModelName"] ?? "gemini-1.5-flash";
@@ -145,8 +145,8 @@ JSON Şeması:
             
             var base64File = Convert.ToBase64String(fileBytes);
 
-            var systemPrompt = @"Sen profesyonel bir muhasebe ve bankacılık veri giriş asistanısın. Görevin, sana gönderilen banka dekontu, transfer makbuzu veya fatura (e-Fatura, e-Arşiv vb.) görsellerini/belgelerini analiz etmek ve bilgileri sadece belirtilen JSON formatında dönmektir. JSON dışında hiçbir açıklama veya markdown işareti yazma.
-Bu belgeyi analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uyarak çıkar:
+            var systemPrompt = @"Sen profesyonel bir muhasebe ve bankacılık veri giriş asistanısın. Görevin, sana gönderilen banka dekontu, transfer makbuzu veya fatura (e-Fatura, e-Arşiv vb.) görsellerini/belgelerini analiz etmek ve bilgileri sadece belirtilen JSON formatında bir JSON dizisi (Array) olarak dönmektir. Belgede sadece tek bir fatura veya dekont bulunsa dahi, bunu mutlaka tek elemanlı bir JSON dizisi [ { ... } ] şeklinde sararak döndür. JSON dışında hiçbir açıklama veya markdown işareti yazma.
+Bu belgeyi analiz et ve bulduğun tüm fatura/dekont belgeleri için aşağıdaki bilgileri Türkçe karakter kurallarına uyarak çıkar:
 1. hesap_no: Banka dekontu ise, işlem gören hesap numarası veya IBAN numarası. Fatura ise boş bırak.
 2. tarih: GG.AA.YYYY formatında işlem tarihi veya fatura tarihi.
 3. dekont_no: Banka dekontu ise dekont/işlem numarası. Fatura ise fatura numarası (Örn: GIB2026000000123).
@@ -169,33 +169,35 @@ Bu belgeyi analiz et ve aşağıdaki bilgileri Türkçe karakter kurallarına uy
    - net_tutar: Kalemin KDV hariç net tutarı (Miktar * Birim Fiyat - İskonto).
    - vergiler_dahil_toplam: Kalemin KDV dahil toplam tutarı (Net Tutar + KDV Tutarı).
 
-JSON Şeması:
-{
-""hesap_no"": ""TR000000000000000000000000"",
-""tarih"": ""GG.AA.YYYY"",
-""dekont_no"": ""Fatura No veya Dekont No"",
-""satici_unvan"": ""Satıcı Firma Adı A.Ş."",
-""satici_vkn"": ""1234567890"",
-""alici_unvan"": ""Alıcı Firma Adı Ltd. Şti."",
-""alici_vkn"": ""0987654321"",
-""karsi_taraf"": ""Karşı Tarafın Adı"",
-""tutar"": 1500.00,
-""masraf"": 0.00,
-""aciklama"": ""İşlem Açıklaması"",
-""fatura_satirlari"": [
+JSON Dizi Şeması:
+[
   {
-    ""malzeme_hizmet_kodu"": """",
-    ""malzeme_hizmet_adi"": ""Ürün/Hizmet Adı"",
-    ""miktar"": 1.0,
-    ""birim_fiyat"": 1250.00,
-    ""kdv_orani"": 20.0,
-    ""iskonto"": 0.0,
-    ""kdv_tutari"": 250.00,
-    ""net_tutar"": 1250.00,
-    ""vergiler_dahil_toplam"": 1500.00
+    ""hesap_no"": ""TR000000000000000000000000"",
+    ""tarih"": ""GG.AA.YYYY"",
+    ""dekont_no"": ""Fatura No veya Dekont No"",
+    ""satici_unvan"": ""Satıcı Firma Adı A.Ş."",
+    ""satici_vkn"": ""1234567890"",
+    ""alici_unvan"": ""Alıcı Firma Adı Ltd. Şti."",
+    ""alici_vkn"": ""0987654321"",
+    ""karsi_taraf"": ""Karşı Tarafın Adı"",
+    ""tutar"": 1500.00,
+    ""masraf"": 0.00,
+    ""aciklama"": ""İşlem Açıklaması"",
+    ""fatura_satirlari"": [
+      {
+        ""malzeme_hizmet_kodu"": """",
+        ""malzeme_hizmet_adi"": ""Ürün/Hizmet Adı"",
+        ""miktar"": 1.0,
+        ""birim_fiyat"": 1250.00,
+        ""kdv_orani"": 20.0,
+        ""iskonto"": 0.0,
+        ""kdv_tutari"": 250.00,
+        ""net_tutar"": 1250.00,
+        ""vergiler_dahil_toplam"": 1500.00
+      }
+    ]
   }
-]
-}";
+]";
 
             var payload = new
             {
@@ -251,7 +253,20 @@ JSON Şeması:
 
                 if (string.IsNullOrEmpty(textResponse)) return null;
 
-                var result = JsonSerializer.Deserialize<ExtractedDekontData>(textResponse);
+                List<ExtractedDekontData>? result = null;
+                try
+                {
+                    result = JsonSerializer.Deserialize<List<ExtractedDekontData>>(textResponse);
+                }
+                catch
+                {
+                    // Fallback: dizisiz tekli nesne döndüyse onu listeye çevirip kurtaralım
+                    var singleObj = JsonSerializer.Deserialize<ExtractedDekontData>(textResponse);
+                    if (singleObj != null)
+                    {
+                        result = new List<ExtractedDekontData> { singleObj };
+                    }
+                }
                 return result;
             }
             catch (Exception ex)
