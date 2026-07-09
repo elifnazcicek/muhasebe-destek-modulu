@@ -23,7 +23,7 @@
       <!-- Ekleme Blokları (Yan Yana) -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <!-- 1. Manuel Cari Kartı Ekle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; height: 240px; box-sizing: border-box;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #0284c7; padding-left: 8px;">Manuel Cari Ekle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Mikro'ya yeni cari hesap açın.</p>
@@ -40,7 +40,7 @@
         </div>
 
         <!-- 2. Excel Dosyasından Cari Yükle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; height: 240px; box-sizing: border-box;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #0284c7; padding-left: 8px;">Excel'den Cari Yükle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Listeden toplu cari ekleyin.</p>
@@ -62,13 +62,13 @@
       </div>
 
       <!-- Cari Liste Tablosu -->
-      <div class="premium-card">
+      <div class="premium-card" style="height: 520px; display: flex; flex-direction: column; box-sizing: border-box;">
         <div class="card-header" style="border-bottom: 1.5px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px;">
           <h3 class="card-title" style="font-size: 13px;">Cari Listesi</h3>
         </div>
-        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px; flex: 1; overflow: hidden;">
           <!-- Cari Arama -->
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-shrink: 0;">
             <input type="text" 
                    class="premium-input" 
                    style="flex: 1; height: 38px; font-size: 12.5px; margin-top: 0;" 
@@ -81,13 +81,13 @@
           </div>
 
           <!-- Yükleniyor Göstergesi -->
-          <div *ngIf="loading" style="text-align: center; padding: 20px; color: #64748b;">
+          <div *ngIf="loading" style="text-align: center; padding: 20px; color: #64748b; flex-shrink: 0;">
             <div class="spinner" style="margin: 0 auto 8px auto; width: 20px; height: 20px;"></div>
             <p style="font-size: 12px;">Cari verileri çekiliyor...</p>
           </div>
 
           <!-- Cari Tablo -->
-          <div *ngIf="!loading" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; max-height: 400px; overflow-y: auto;">
+          <div *ngIf="!loading" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; flex: 1; overflow-y: auto;">
             <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; font-size: 12px;">
               <thead>
                 <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 1;">
@@ -111,7 +111,7 @@
 
           <!-- Cari Daha Fazla Göster Butonu -->
           <div *ngIf="filteredCaris.length > 0 && filteredCaris.length < totalCarisCount && !loading" 
-               style="display: flex; justify-content: center; margin-top: 8px;">
+               style="display: flex; justify-content: center; margin-top: 8px; flex-shrink: 0;">
             <button type="button" class="premium-btn" (click)="showMoreCaris()" 
                     style="width: 100%; max-width: 200px; height: 32px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; padding: 0; margin-top: 0;">
               Daha Fazla Göster ({{ filteredCaris.length }} / {{ totalCarisCount }})
@@ -136,7 +136,7 @@
       <!-- Ekleme Blokları (Yan Yana) -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <!-- 3. Manuel Stok / Hizmet Ekle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; height: 240px; box-sizing: border-box;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #10b981; padding-left: 8px;">Manuel Stok Ekle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Yeni stok veya hizmet kartı açın.</p>
@@ -161,7 +161,7 @@
         </div>
 
         <!-- 4. Excel Dosyasından Stok Yükle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; height: 240px; box-sizing: border-box;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #10b981; padding-left: 8px;">Excel'den Stok Yükle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Listeden toplu stok ekleyin.</p>
@@ -183,13 +183,13 @@
       </div>
 
       <!-- Stok / Hizmet Liste Tablosu -->
-      <div class="premium-card">
+      <div class="premium-card" style="height: 520px; display: flex; flex-direction: column; box-sizing: border-box;">
         <div class="card-header" style="border-bottom: 1.5px solid #f1f5f9; padding-bottom: 8px; margin-bottom: 12px;">
           <h3 class="card-title" style="font-size: 13px; border-left-color: #10b981;">Stok & Hizmet Listesi</h3>
         </div>
-        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px; flex: 1; overflow: hidden;">
           <!-- Stok Arama -->
-          <div style="display: flex; gap: 8px;">
+          <div style="display: flex; gap: 8px; flex-shrink: 0;">
             <input type="text" 
                    class="premium-input" 
                    style="flex: 1; height: 38px; font-size: 12.5px; margin-top: 0;" 
@@ -202,13 +202,13 @@
           </div>
 
           <!-- Yükleniyor Göstergesi -->
-          <div *ngIf="stokLoading" style="text-align: center; padding: 20px; color: #64748b;">
+          <div *ngIf="stokLoading" style="text-align: center; padding: 20px; color: #64748b; flex-shrink: 0;">
             <div class="spinner" style="margin: 0 auto 8px auto; width: 20px; height: 20px;"></div>
             <p style="font-size: 12px;">Stok verileri çekiliyor...</p>
           </div>
 
           <!-- Stok Tablo -->
-          <div *ngIf="!stokLoading" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; max-height: 400px; overflow-y: auto;">
+          <div *ngIf="!stokLoading" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; flex: 1; overflow-y: auto;">
             <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; font-size: 12px;">
               <thead>
                 <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 1;">
@@ -232,7 +232,7 @@
 
           <!-- Stok Daha Fazla Göster Butonu -->
           <div *ngIf="filteredStoks.length > 0 && filteredStoks.length < totalStoksCount && !stokLoading" 
-               style="display: flex; justify-content: center; margin-top: 8px;">
+               style="display: flex; justify-content: center; margin-top: 8px; flex-shrink: 0;">
             <button type="button" class="premium-btn" (click)="showMoreStoks()" 
                     style="width: 100%; max-width: 200px; height: 32px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; padding: 0; margin-top: 0;">
               Daha Fazla Göster ({{ filteredStoks.length }} / {{ totalStoksCount }})

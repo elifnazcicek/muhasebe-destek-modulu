@@ -124,14 +124,6 @@
           </div>
 
           <div class="form-group">
-            <label for="detected_type">Evrak Tipi</label>
-            <select id="detected_type" class="form-input-clean" [(ngModel)]="detectedType" name="detectedType" style="height: 40px; font-size: 14px;">
-              <option value="Alis">Alış Faturası (Girdi)</option>
-              <option value="Satis">Satış Faturası (Çıktı)</option>
-            </select>
-          </div>
-
-          <div class="form-group">
             <label for="cari_adi">Cari Ünvanı</label>
             <select id="cari_adi" class="form-input-clean" [(ngModel)]="cariKodu" name="cariKodu" (change)="onCariSelectChange()" style="height: 40px; font-size: 13px;" required>
               <option value="">-- Cari Ünvanı Seçiniz --</option>
@@ -148,18 +140,24 @@
           </div>
 
           <div class="form-group">
-            <label for="selected_doviz">Döviz Cinsi</label>
-            <select id="selected_doviz" class="form-input-clean" [(ngModel)]="selectedDoviz" name="selectedDoviz" style="height: 40px; font-size: 14px;">
-              <option value="TL">TL (Türk Lirası)</option>
-              <option value="USD">USD (Amerikan Doları)</option>
-              <option value="EUR">EUR (Euro)</option>
-              <option value="GBP">GBP (İngiliz Sterlini)</option>
+            <label for="detected_type">Evrak Tipi</label>
+            <select id="detected_type" class="form-input-clean" [(ngModel)]="detectedType" name="detectedType" style="height: 40px; font-size: 14px;">
+              <option value="Alis">Alış Faturası (Girdi)</option>
+              <option value="Satis">Satış Faturası (Çıktı)</option>
             </select>
           </div>
 
-          <div class="form-group" *ngIf="selectedDoviz !== 'TL'">
-            <label for="doviz_kuru">Döviz Kuru</label>
-            <input type="number" id="doviz_kuru" class="form-input-clean" [(ngModel)]="dovizKuru" name="dovizKuru" step="0.0001" min="0.0001" placeholder="Kur Giriniz" required />
+          <div class="form-group">
+            <label>Döviz Cinsi & Kuru</label>
+            <div style="display: flex; gap: 8px; align-items: center; width: 100%;">
+              <select id="selected_doviz" class="form-input-clean" [(ngModel)]="selectedDoviz" name="selectedDoviz" style="height: 40px; font-size: 14px; flex: 1;">
+                <option value="TL">TL (Türk Lirası)</option>
+                <option value="USD">USD (Amerikan Doları)</option>
+                <option value="EUR">EUR (Euro)</option>
+                <option value="GBP">GBP (İngiliz Sterlini)</option>
+              </select>
+              <input *ngIf="selectedDoviz !== 'TL'" type="number" id="doviz_kuru" class="form-input-clean" [(ngModel)]="dovizKuru" name="dovizKuru" step="0.0001" min="0.0001" placeholder="Kur" style="height: 40px; width: 100px; font-size: 14px; text-align: center; flex-shrink: 0; margin-top: 0;" required />
+            </div>
           </div>
 
           <!-- Mikro Cari Kodu ve VKN Alanları -->
