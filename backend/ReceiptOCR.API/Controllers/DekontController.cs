@@ -75,6 +75,18 @@ public class DekontController : ControllerBase
                 BEGIN
                     ALTER TABLE Dekonts ADD OdenecekTutar DECIMAL(18,2) NOT NULL DEFAULT 0.0;
                 END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'Doviz')
+                BEGIN
+                    ALTER TABLE Dekonts ADD Doviz NVARCHAR(10) NOT NULL DEFAULT 'TL';
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'Kur')
+                BEGIN
+                    ALTER TABLE Dekonts ADD Kur FLOAT NOT NULL DEFAULT 1.0;
+                END
+                IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('Dekonts') AND name = 'MasrafKodu')
+                BEGIN
+                    ALTER TABLE Dekonts ADD MasrafKodu NVARCHAR(50) NOT NULL DEFAULT 'Genel Gider';
+                END
                 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[CARI_HESAPLAR]') AND type in (N'U'))
                 BEGIN
                     CREATE TABLE CARI_HESAPLAR (
@@ -1196,6 +1208,9 @@ public class DekontController : ControllerBase
             worksheet.Cell(1, 12).Value = "Net Tutar";
             worksheet.Cell(1, 13).Value = "Ödenecek Tutar";
             worksheet.Cell(1, 14).Value = "Evrak Tipi";
+            worksheet.Cell(1, 15).Value = "Döviz";
+            worksheet.Cell(1, 16).Value = "Kur";
+            worksheet.Cell(1, 17).Value = "Masraf Kodu";
 
             var headerRow = worksheet.Row(1);
             headerRow.Style.Font.Bold = true;
@@ -1219,6 +1234,9 @@ public class DekontController : ControllerBase
                 worksheet.Cell(rowIdx, 12).Value = line.NetTutar > 0 ? line.NetTutar : line.Tutar;
                 worksheet.Cell(rowIdx, 13).Value = line.VergilerDahilToplam > 0 ? line.VergilerDahilToplam : (line.NetTutar + line.KdvTutari);
                 worksheet.Cell(rowIdx, 14).Value = request.FaturaTipi == "Satis" ? "Çıktı" : "Girdi";
+                worksheet.Cell(rowIdx, 15).Value = request.Doviz ?? "TL";
+                worksheet.Cell(rowIdx, 16).Value = request.Kur > 0 ? request.Kur : 1.0;
+                worksheet.Cell(rowIdx, 17).Value = "Genel Gider";
 
                 worksheet.Cell(rowIdx, 8).Style.NumberFormat.Format = "#,##0.00";
                 worksheet.Cell(rowIdx, 9).Style.NumberFormat.Format = "#,##0.00";
@@ -1292,7 +1310,10 @@ public class DekontController : ControllerBase
                     Miktar = line.Miktar,
                     BirimFiyat = (decimal)line.BirimFiyat,
                     KdvOrani = line.KdvOrani,
-                    OdenecekTutar = (decimal)(line.VergilerDahilToplam > 0 ? line.VergilerDahilToplam : (line.NetTutar + line.KdvTutari))
+                    OdenecekTutar = (decimal)(line.VergilerDahilToplam > 0 ? line.VergilerDahilToplam : (line.NetTutar + line.KdvTutari)),
+                    Doviz = request.Doviz ?? "TL",
+                    Kur = request.Kur > 0 ? request.Kur : 1.0,
+                    MasrafKodu = "Genel Gider"
                 };
                 _context.Dekonts.Add(dekont);
                 savedDekonts.Add(dekont);
@@ -1400,6 +1421,9 @@ public class DekontController : ControllerBase
         worksheet.Cell(1, 12).Value = "Net Tutar";
         worksheet.Cell(1, 13).Value = "Ödenecek Tutar";
         worksheet.Cell(1, 14).Value = "Evrak Tipi";
+        worksheet.Cell(1, 15).Value = "Döviz";
+        worksheet.Cell(1, 16).Value = "Kur";
+        worksheet.Cell(1, 17).Value = "Masraf Kodu";
 
         var headerRow = worksheet.Row(1);
         headerRow.Style.Font.Bold = true;
@@ -1423,6 +1447,9 @@ public class DekontController : ControllerBase
             worksheet.Cell(rowIdx, 12).Value = d.Tutar; // Net Tutar
             worksheet.Cell(rowIdx, 13).Value = d.OdenecekTutar;
             worksheet.Cell(rowIdx, 14).Value = d.FaturaTipi == "Satis" ? "Çıktı" : "Girdi";
+            worksheet.Cell(rowIdx, 15).Value = d.Doviz ?? "TL";
+            worksheet.Cell(rowIdx, 16).Value = d.Kur > 0 ? d.Kur : 1.0;
+            worksheet.Cell(rowIdx, 17).Value = d.MasrafKodu ?? "Genel Gider";
 
             worksheet.Cell(rowIdx, 8).Style.NumberFormat.Format = "#,##0.00";
             worksheet.Cell(rowIdx, 9).Style.NumberFormat.Format = "#,##0.00";
@@ -1569,6 +1596,8 @@ public class ConfirmDekontRequest
     public string FaturaTipi { get; set; } = string.Empty; // "Alis" veya "Satis"
     public string CreatedBy { get; set; } = string.Empty;
     public List<ParsedInvoiceLine> Lines { get; set; } = new();
+    public string Doviz { get; set; } = "TL";
+    public double Kur { get; set; } = 1.0;
 }
 
 public class CreateCariRequest
@@ -1592,6 +1621,8 @@ public class ExportExcelRequest
     public double GenelToplam { get; set; }
     public string Kullanici { get; set; } = string.Empty;
     public string FaturaTipi { get; set; } = string.Empty;
+    public string Doviz { get; set; } = "TL";
+    public double Kur { get; set; } = 1.0;
 }
 
 public class ParsedInvoiceLine

@@ -45,6 +45,9 @@ export class DekontComponent implements OnInit, OnDestroy {
   cariAdi: string = '';
   isCariValid: boolean = false;
   stokCards: any[] = [];
+  cariCards: any[] = [];
+  selectedDoviz: string = 'TL';
+  dovizKuru: number = 1.0;
 
   // Otomatik Alış/Satış Tespiti ve Şirket Adı
   myCompanyName: string = '';
@@ -93,6 +96,7 @@ export class DekontComponent implements OnInit, OnDestroy {
     this.myCompanyName = localStorage.getItem('myCompanyName') || '';
     this.restoreState();
     this.fetchStokCards();
+    this.fetchCariCards();
   }
 
   ngOnDestroy(): void {
@@ -506,7 +510,9 @@ export class DekontComponent implements OnInit, OnDestroy {
       kdvToplam: this.kdvToplam,
       genelToplam: this.genelToplam,
       kullanici: this.currentUsername,
-      faturaTipi: typeToSend
+      faturaTipi: typeToSend,
+      doviz: this.selectedDoviz,
+      kur: this.dovizKuru
     };
 
     this.http.post(`${this.baseUrl}/export-excel`, payload, { responseType: 'blob' }).subscribe({
@@ -549,7 +555,9 @@ export class DekontComponent implements OnInit, OnDestroy {
       cariAdi: this.cariAdi,
       faturaTipi: faturaTipi,
       createdBy: this.currentUsername,
-      lines: this.invoiceLines
+      lines: this.invoiceLines,
+      doviz: this.selectedDoviz,
+      kur: this.dovizKuru
     };
 
     this.http.post<any>(`${this.baseUrl}/confirm`, payload).subscribe({
@@ -924,5 +932,32 @@ export class DekontComponent implements OnInit, OnDestroy {
       item.cinsi = matched.stoCinsi === 'Hizmet' ? 'Hizmet' : 'Stok';
       this.calculateTotals();
     }
+  }
+
+  fetchCariCards(): void {
+    this.http.get<any>(`${this.baseUrl}/list-caris?limit=1000`).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.cariCards = res.data.list || [];
+        }
+      },
+      error: (err) => {
+        console.error('Error fetching cari cards:', err);
+      }
+    });
+  }
+
+  onCariSelectChange(): void {
+    const matched = this.cariCards.find(c => c.cariKodu === this.cariKodu);
+    if (matched) {
+      this.cariAdi = matched.cariAdi;
+      this.VKN = matched.vkn || '';
+      this.isCariValid = true;
+    } else {
+      this.cariAdi = '';
+      this.VKN = '';
+      this.isCariValid = false;
+    }
+    this.cdr.detectChanges();
   }
 }

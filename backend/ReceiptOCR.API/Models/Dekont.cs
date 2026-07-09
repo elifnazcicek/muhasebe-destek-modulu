@@ -22,5 +22,8 @@ namespace ReceiptOCR.API.Models
         public decimal BirimFiyat { get; set; }
         public double KdvOrani { get; set; }
         public decimal OdenecekTutar { get; set; }
+        public string Doviz { get; set; } = "TL";
+        public double Kur { get; set; } = 1.0;
+        public string MasrafKodu { get; set; } = "Genel Gider";
     }
 }

@@ -133,10 +133,25 @@
 
           <div class="form-group">
             <label for="cari_adi">Cari Ünvanı</label>
-            <div style="display: flex; gap: 6px; align-items: center;">
-              <input type="text" id="cari_adi" class="form-input-clean" [(ngModel)]="cariAdi" name="cariAdi" placeholder="Cari Ünvanı" required style="flex: 1;" />
-              <button type="button" class="btn btn-secondary btn-sm" (click)="searchAndMatchCari()" style="padding: 8px 10px;">Ara</button>
-            </div>
+            <select id="cari_adi" class="form-input-clean" [(ngModel)]="cariKodu" name="cariKodu" (change)="onCariSelectChange()" style="height: 40px; font-size: 13px;" required>
+              <option value="">-- Cari Ünvanı Seçiniz --</option>
+              <option *ngFor="let cari of cariCards" [value]="cari.cariKodu">{{ cari.cariAdi }} ({{ cari.cariKodu }})</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="selected_doviz">Döviz Cinsi</label>
+            <select id="selected_doviz" class="form-input-clean" [(ngModel)]="selectedDoviz" name="selectedDoviz" style="height: 40px; font-size: 14px;">
+              <option value="TL">TL (Türk Lirası)</option>
+              <option value="USD">USD (Amerikan Doları)</option>
+              <option value="EUR">EUR (Euro)</option>
+              <option value="GBP">GBP (İngiliz Sterlini)</option>
+            </select>
+          </div>
+
+          <div class="form-group" *ngIf="selectedDoviz !== 'TL'">
+            <label for="doviz_kuru">Döviz Kuru</label>
+            <input type="number" id="doviz_kuru" class="form-input-clean" [(ngModel)]="dovizKuru" name="dovizKuru" step="0.0001" min="0.0001" placeholder="Kur Giriniz" required />
           </div>
           
           <!-- Mikro Cari Kodu ve VKN Alanları -->
@@ -179,10 +194,10 @@
                 <!-- Üst Satır: Giriş Değerleri -->
                 <tr>
                   <td>
-                    <input type="text" class="table-input-clean" [(ngModel)]="item.kodu" [name]="'kodu_' + i" (change)="onStokKoduChange(item)" (ngModelChange)="onStokKoduChange(item)" placeholder="Mal/Hiz Kod" [attr.list]="'stokList_' + i" required />
-                    <datalist [id]="'stokList_' + i">
+                    <select class="table-input-clean" [(ngModel)]="item.kodu" [name]="'kodu_' + i" (change)="onStokKoduChange(item)" style="width: 100%; border: none; background: transparent; outline: none; height: 32px;" required>
+                      <option value="">-- Seçiniz --</option>
                       <option *ngFor="let stok of stokCards" [value]="stok.stoKod">{{ stok.stoKod }} - {{ stok.stoIsim }}</option>
-                    </datalist>
+                    </select>
                   </td>
                   <td>
                     <input type="text" class="table-input-clean" [(ngModel)]="item.ismi" [name]="'ismi_' + i" placeholder="Hizmet Açıklaması" required />
