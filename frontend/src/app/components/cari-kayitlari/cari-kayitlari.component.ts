@@ -33,6 +33,7 @@ export class CariKayitlariComponent implements OnInit {
   newStokName = '';
   newStokCinsi = 'Stok';
   newStokKdv = 20;
+  isStokDragOver = false;
 
   @HostListener('window:scroll', [])
   onWindowScroll() {
@@ -290,5 +291,68 @@ export class CariKayitlariComponent implements OnInit {
 
   onStokSearch(): void {
     this.fetchStoks();
+  }
+
+  onStokDragOver(event: DragEvent): void {
+    event.preventDefault();
+    this.isStokDragOver = true;
+  }
+
+  onStokDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    this.isStokDragOver = false;
+  }
+
+  onStokDrop(event: DragEvent): void {
+    event.preventDefault();
+    this.isStokDragOver = false;
+    const file = event.dataTransfer?.files?.[0];
+    if (file) {
+      this.handleStokFile(file);
+    }
+  }
+
+  onStokFileSelected(event: any): void {
+    const file = event.target.files?.[0];
+    if (file) {
+      this.handleStokFile(file);
+    }
+  }
+
+  handleStokFile(file: File): void {
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    
+    if (ext !== 'xlsx' && ext !== 'xls') {
+      this.showStatus('Lütfen yalnızca geçerli bir Excel dosyası (.xlsx, .xls) yükleyiniz.', 'error', 5000);
+      return;
+    }
+
+    this.stokLoading = true;
+    this.showStatus('Excel dosyası yükleniyor ve stok listesi çözümleniyor...', 'info', 0);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    this.http.post<any>(`${this.baseUrl}/parse-excel-stok`, formData).subscribe({
+      next: (res) => {
+        this.stokLoading = false;
+        if (res.success && res.data) {
+          const count = res.data.addedCount;
+          this.showStatus(`Excel başarıyla okundu! ${count} adet yeni Stok/Hizmet kartı veritabanına eklendi. Sayfa yenileniyor...`, 'success', 6000);
+          this.fetchStoks();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1800);
+        } else {
+          this.showStatus(res.message || 'Excel dosyası işlenemedi.', 'error');
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.stokLoading = false;
+        this.showStatus(err.error?.message || 'Excel dosyası işlenirken hata oluştu.', 'error');
+        this.cdr.detectChanges();
+      }
+    });
   }
 }

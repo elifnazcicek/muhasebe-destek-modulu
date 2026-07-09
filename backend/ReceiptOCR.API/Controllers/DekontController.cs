@@ -696,6 +696,146 @@ public class DekontController : ControllerBase
     }
 
     /// <summary>
+    /// Excel dosyasından stok/hizmet kartı listesi çözümler ve Mikro STOK_KARTLARI tablosuna kaydeder.
+    /// </summary>
+    [HttpPost("parse-excel-stok")]
+    public async Task<IActionResult> ParseExcelStok(IFormFile file)
+    {
+        _logger.LogInformation("[API] Excel Stok Yükleme isteği alındı. Dosya: {FileName}", file?.FileName);
+
+        if (file == null || file.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail("Lütfen geçerli bir dosya yükleyiniz."));
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (ext != ".xlsx" && ext != ".xls")
+        {
+            return BadRequest(ApiResponse<object>.Fail("Yalnızca Excel (.xlsx, .xls) dosyaları desteklenmektedir."));
+        }
+
+        try
+        {
+            using var stream = file.OpenReadStream();
+            using var workbook = new XLWorkbook(stream);
+            var worksheet = workbook.Worksheets.FirstOrDefault();
+            if (worksheet == null)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Excel dosyasında çalışma sayfası bulunamadı."));
+            }
+
+            var rows = worksheet.RowsUsed().ToList();
+            if (rows.Count <= 1)
+            {
+                return BadRequest(ApiResponse<object>.Fail("Excel dosyasında veri satırı bulunamadı."));
+            }
+
+            // Kolon başlıklarını tespit etmeye çalış
+            var firstRow = rows.First();
+            int kodCol = -1;
+            int isimCol = -1;
+            int cinsiCol = -1;
+            int kdvCol = -1;
+
+            foreach (var cell in firstRow.Cells())
+            {
+                var val = cell.Value.ToString().Trim().ToLowerInvariant();
+                if (val.Contains("kod"))
+                {
+                    kodCol = cell.Address.ColumnNumber;
+                }
+                else if (val.Contains("isim") || val.Contains("ad") || val.Contains("tanım") || val.Contains("açıklama") || val.Contains("aciklama") || val.Contains("stok"))
+                {
+                    if (!val.Contains("kod"))
+                    {
+                        isimCol = cell.Address.ColumnNumber;
+                    }
+                }
+                else if (val.Contains("tip") || val.Contains("cins") || val.Contains("tür") || val.Contains("tur"))
+                {
+                    cinsiCol = cell.Address.ColumnNumber;
+                }
+                else if (val.Contains("kdv") || val.Contains("oran"))
+                {
+                    kdvCol = cell.Address.ColumnNumber;
+                }
+            }
+
+            if (kodCol == -1) kodCol = 1;
+            if (isimCol == -1) isimCol = 2;
+
+            int addedCount = 0;
+            var addedStoks = new List<object>();
+
+            using var conn = new SqlConnection(ConnectionString);
+            await conn.OpenAsync();
+
+            for (int r = 2; r <= rows.Count; r++)
+            {
+                var row = worksheet.Row(r);
+                var rawKod = row.Cell(kodCol).Value.ToString().Trim();
+                var rawIsim = row.Cell(isimCol).Value.ToString().Trim();
+
+                if (string.IsNullOrEmpty(rawKod) || string.IsNullOrEmpty(rawIsim))
+                    continue;
+
+                if (rawKod.ToLowerInvariant().Contains("kod") || rawIsim.ToLowerInvariant().Contains("isim") || rawIsim.ToLowerInvariant().Contains("tanım"))
+                    continue;
+
+                string rawCinsi = "Stok";
+                if (cinsiCol != -1)
+                {
+                    var cinsiVal = row.Cell(cinsiCol).Value.ToString().Trim().ToLowerInvariant();
+                    if (cinsiVal.Contains("hizmet") || cinsiVal == "h" || cinsiVal == "service")
+                    {
+                        rawCinsi = "Hizmet";
+                    }
+                }
+
+                double rawKdv = 20.0;
+                if (kdvCol != -1)
+                {
+                    var kdvValStr = row.Cell(kdvCol).Value.ToString().Trim();
+                    if (double.TryParse(kdvValStr, out double parsedKdv))
+                    {
+                        rawKdv = parsedKdv;
+                    }
+                }
+
+                var checkCmdText = "SELECT COUNT(*) FROM STOK_KARTLARI WHERE sto_kod = @kod";
+                using var checkCmd = new SqlCommand(checkCmdText, conn);
+                checkCmd.Parameters.AddWithValue("@kod", rawKod);
+                var exists = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
+
+                if (!exists)
+                {
+                    var insertCmdText = @"
+                        INSERT INTO STOK_KARTLARI (sto_kod, sto_isim, sto_cinsi, sto_kdv_orani, sto_created_date) 
+                        VALUES (@kod, @isim, @cinsi, @kdv, GETDATE())";
+                    
+                    using (var insertCmd = new SqlCommand(insertCmdText, conn))
+                    {
+                        insertCmd.Parameters.AddWithValue("@kod", rawKod);
+                        insertCmd.Parameters.AddWithValue("@isim", rawIsim);
+                        insertCmd.Parameters.AddWithValue("@cinsi", rawCinsi);
+                        insertCmd.Parameters.AddWithValue("@kdv", rawKdv);
+
+                        await insertCmd.ExecuteNonQueryAsync();
+                    }
+
+                    addedCount++;
+                    addedStoks.Add(new { stoKod = rawKod, stoIsim = rawIsim, stoCinsi = rawCinsi, stoKdvOrani = rawKdv });
+                }
+            }
+
+            return Ok(ApiResponse<object>.Ok(new { addedCount = addedCount, addedStoks = addedStoks }, $"{addedCount} adet yeni Stok/Hizmet kartı başarıyla yüklendi ve oluşturuldu."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Excel stok listesi yüklenirken hata oluştu.");
+            return StatusCode(500, ApiResponse<object>.Fail("Excel dosyası okunurken bir hata oluştu: " + ex.Message));
+        }
+    }
+
+    /// <summary>
     /// Mikro SQL veritabanında yeni cari hesabı açar.
     /// </summary>
     [HttpPost("create-cari")]

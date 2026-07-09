@@ -179,3 +179,15 @@
     grid-template-columns: 1fr !important;
   }
 }
+
+@media (max-width: 1200px) {
+  .panels-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  .panels-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
