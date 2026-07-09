@@ -14,7 +14,7 @@ export const routes: Routes = [
   { path: 'home', component: HomeComponent },
   { path: 'dashboard', component: DashboardComponent },
   { path: 'dekont', component: DekontComponent },
-  { path: 'cari-kayitlari', component: CariKayitlariComponent },
+  { path: 'kayitlar', component: CariKayitlariComponent },
   { path: 'archive', component: ArchiveComponent },
   { path: 'logs', component: LogsComponent },
   { path: 'users', component: UserManagementComponent },

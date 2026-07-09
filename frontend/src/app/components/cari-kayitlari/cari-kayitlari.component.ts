@@ -21,6 +21,19 @@ export class CariKayitlariComponent implements OnInit {
   totalCarisCount = 0;
   isScrolledDown = false;
 
+  // Stok/Hizmet properties
+  stokLoading = false;
+  stoks: any[] = [];
+  filteredStoks: any[] = [];
+  stokSearchQuery = '';
+  stokLimit = 100;
+  totalStoksCount = 0;
+
+  newStokCode = '';
+  newStokName = '';
+  newStokCinsi = 'Stok';
+  newStokKdv = 20;
+
   @HostListener('window:scroll', [])
   onWindowScroll() {
     this.isScrolledDown = window.scrollY > 150;
@@ -41,6 +54,7 @@ export class CariKayitlariComponent implements OnInit {
 
   ngOnInit(): void {
     this.fetchCaris();
+    this.fetchStoks();
   }
 
   showStatus(msg: string, type: 'success' | 'info' | 'error', duration: number = 4000): void {
@@ -198,5 +212,83 @@ export class CariKayitlariComponent implements OnInit {
         this.cdr.detectChanges();
       }
     });
+  }
+
+  fetchStoks(): void {
+    this.stokLoading = true;
+    let url = `${this.baseUrl}/list-stoks?limit=${this.stokLimit}`;
+    if (this.stokSearchQuery.trim()) {
+      url += `&search=${encodeURIComponent(this.stokSearchQuery.trim())}`;
+    }
+
+    this.http.get<any>(url).subscribe({
+      next: (res) => {
+        this.stokLoading = false;
+        if (res.success && res.data) {
+          this.stoks = res.data.list;
+          this.totalStoksCount = res.data.totalCount;
+          this.filteredStoks = [...this.stoks];
+        } else {
+          this.showStatus(res.message || 'Stok kayıtları yüklenemedi.', 'error');
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.stokLoading = false;
+        this.showStatus(err.error?.message || 'Stok kayıtları yüklenirken hata oluştu.', 'error');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  addStokManually(): void {
+    if (!this.newStokCode.trim() || !this.newStokName.trim()) {
+      this.showStatus('Lütfen Stok Kodu ve İsmini doldurun.', 'error');
+      return;
+    }
+
+    this.stokLoading = true;
+    this.showStatus('Stok/Hizmet kartı oluşturuluyor...', 'info', 0);
+
+    const payload = {
+      stoKod: this.newStokCode,
+      stoIsim: this.newStokName,
+      stoCinsi: this.newStokCinsi,
+      stoKdvOrani: this.newStokKdv
+    };
+
+    this.http.post<any>(`${this.baseUrl}/create-stok`, payload).subscribe({
+      next: (res) => {
+        this.stokLoading = false;
+        if (res.success) {
+          this.newStokCode = '';
+          this.newStokName = '';
+          this.newStokCinsi = 'Stok';
+          this.newStokKdv = 20;
+          this.showStatus('Stok/Hizmet kartı başarıyla oluşturuldu! Sayfa yenileniyor...', 'success', 5000);
+          this.fetchStoks();
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          this.showStatus(res.message || 'Stok kartı oluşturulamadı.', 'error');
+        }
+        this.cdr.detectChanges();
+      },
+      error: (err) => {
+        this.stokLoading = false;
+        this.showStatus(err.error?.message || 'Stok kartı oluşturulurken hata oluştu.', 'error');
+        this.cdr.detectChanges();
+      }
+    });
+  }
+
+  showMoreStoks(): void {
+    this.stokLimit += 100;
+    this.fetchStoks();
+  }
+
+  onStokSearch(): void {
+    this.fetchStoks();
   }
 }

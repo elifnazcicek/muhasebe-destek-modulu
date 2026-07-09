@@ -1,136 +1,244 @@
 <div class="cari-page-container">
-  
-  <!-- Üst Bölüm: Manuel ve Dosyadan Ekleme Panelleri -->
-  <div class="panels-grid">
-    
-    <!-- Manuel Cari Ekleme Paneli -->
-    <div class="premium-card">
-      <div class="card-header">
-        <h3 class="card-title">Manuel Cari Kartı Ekle</h3>
-        <p class="card-subtitle">Mikro veritabanına doğrudan yeni cari hesap kartı ekleyin.</p>
-      </div>
-      <div class="card-body">
-        <form (submit)="addCariManually()" style="display: flex; flex-direction: column; gap: 14px;">
-          <div class="form-group">
-            <label class="form-label">Cari Ünvanı</label>
-            <input type="text" class="premium-input" [(ngModel)]="newCariName" name="newCariName" placeholder="Örn: Google Teknoloji A.Ş." required />
-          </div>
-          <div class="form-group">
-            <label class="form-label">VKN / TCKN</label>
-            <input type="text" class="premium-input" [(ngModel)]="newCariVkn" name="newCariVkn" placeholder="10 haneli VKN veya 11 haneli TCKN" required />
-          </div>
-          <button type="submit" class="premium-btn" [disabled]="loading">
-            <span>Cari Kartı Oluştur</span>
-          </button>
-        </form>
-      </div>
-    </div>
 
-    <!-- Dosyadan Otomatik Cari Yükleme Paneli -->
-    <div class="premium-card" style="display: flex; flex-direction: column;">
-      <div class="card-header">
-        <h3 class="card-title">Excel Dosyasından Cari Yükle</h3>
-        <p class="card-subtitle">Excel cari listenizdeki hesapları otomatik okuyup Mikro'ya kaydedin.</p>
-      </div>
-      <div class="card-body" style="flex: 1; display: flex; flex-direction: column; justify-content: center;">
-        <div class="upload-box" 
-             (click)="fileInput.click()"
-             [class.drag-active]="isDragOver"
-             (dragover)="onDragOver($event)"
-             (dragleave)="onDragLeave($event)"
-             (drop)="onDrop($event)">
-          <h4 style="font-size: 13px; font-weight: 700; color: #334155; margin: 0;">Excel Cari Listesi Yükleyin</h4>
-          <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Yalnızca Excel (.xlsx, .xls) formatları desteklenir</p>
-          <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xlsx,.xls" style="display: none;" />
-        </div>
-      </div>
-    </div>
-
+  <!-- Durum / Bilgilendirme Uyarısı (Genel) -->
+  <div *ngIf="statusMessage" class="status-alert" [ngClass]="statusType" style="margin-bottom: 20px; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px;">
+    <span *ngIf="(loading || stokLoading) && statusType === 'info'" class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span>
+    <span>{{ statusMessage }}</span>
   </div>
 
-  <!-- Alt Bölüm: Cari Liste Tablosu -->
-  <div class="premium-card">
-    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 20px;">
-      <div>
-        <h2 class="card-title" style="font-size: 1.35rem;">Cari Hesap Kayıtları Listesi</h2>
-      </div>
-      <span style="background-color: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 11px; padding: 6px 12px; border-radius: 8px; border: 1px solid #bae6fd;">
-        Toplam {{ totalCarisCount }} Cari Kart
-      </span>
-    </div>
-
-    <div class="card-body" style="display: flex; flex-direction: column; gap: 16px;">
+  <div class="kayitlar-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; align-items: start;">
+    
+    <!-- ================= SOL KOLON: CARİ YÖNETİMİ ================= -->
+    <div class="column-section" style="display: flex; flex-direction: column; gap: 20px;">
       
-      <!-- Durum / Bilgilendirme Uyarısı -->
-      <div *ngIf="statusMessage" class="status-alert" [ngClass]="statusType" style="padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 8px;">
-        <span *ngIf="loading && statusType === 'info'" class="spinner" style="width: 16px; height: 16px; border-width: 2px;"></span>
-        <span>{{ statusMessage }}</span>
+      <div class="section-title-wrapper" style="border-bottom: 3px solid #0284c7; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px;">Cari Hesap Yönetimi</h2>
+        <span style="background-color: #e0f2fe; color: #0369a1; font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid #bae6fd;">
+          {{ totalCarisCount }} Cari
+        </span>
       </div>
 
-      <!-- Arama & Filtreleme Barı -->
-      <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-        <input type="text" 
-               class="premium-input" 
-               style="flex: 1; max-width: 400px; height: 42px;" 
-               placeholder="Cari Ünvanı veya Cari Kodu Ara..." 
-               [(ngModel)]="searchQuery" 
-               (input)="onSearch()" />
-        <button type="button" class="premium-btn" (click)="fetchCaris()" [disabled]="loading" style="background-color: #64748b; width: 100px;">
-          Yenile
-        </button>
+      <!-- Manuel Cari Ekleme Paneli -->
+      <div class="premium-card">
+        <div class="card-header">
+          <h3 class="card-title">Manuel Cari Kartı Ekle</h3>
+          <p class="card-subtitle">Mikro veritabanına doğrudan yeni cari hesap kartı ekleyin.</p>
+        </div>
+        <div class="card-body">
+          <form (submit)="addCariManually()" style="display: flex; flex-direction: column; gap: 14px;">
+            <div class="form-group">
+              <label class="form-label">Cari Ünvanı</label>
+              <input type="text" class="premium-input" [(ngModel)]="newCariName" name="newCariName" placeholder="Örn: Google Teknoloji A.Ş." required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">VKN / TCKN</label>
+              <input type="text" class="premium-input" [(ngModel)]="newCariVkn" name="newCariVkn" placeholder="10 haneli VKN veya 11 haneli TCKN" required />
+            </div>
+            <button type="submit" class="premium-btn" [disabled]="loading" style="background-color: #0284c7;">
+              <span>Cari Kartı Oluştur</span>
+            </button>
+          </form>
+        </div>
       </div>
 
-      <!-- Yükleniyor Göstergesi -->
-      <div *ngIf="loading && !statusMessage" style="text-align: center; padding: 40px; color: #64748b;">
-        <div class="spinner" style="margin: 0 auto 12px auto;"></div>
-        <p style="font-size: 13px; font-weight: 500;">Cari verileri çekiliyor...</p>
+      <!-- Dosyadan Otomatik Cari Yükleme Paneli -->
+      <div class="premium-card">
+        <div class="card-header">
+          <h3 class="card-title">Excel Dosyasından Cari Yükle</h3>
+          <p class="card-subtitle">Excel cari listenizdeki hesapları otomatik okuyup Mikro'ya kaydedin.</p>
+        </div>
+        <div class="card-body">
+          <div class="upload-box" 
+               (click)="fileInput.click()"
+               [class.drag-active]="isDragOver"
+               (dragover)="onDragOver($event)"
+               (dragleave)="onDragLeave($event)"
+               (drop)="onDrop($event)">
+            <h4 style="font-size: 13px; font-weight: 700; color: #334155; margin: 0;">Excel Cari Listesi Yükleyin</h4>
+            <p style="font-size: 11px; color: #64748b; margin: 4px 0 0 0;">Yalnızca Excel (.xlsx, .xls) formatları desteklenir</p>
+            <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xlsx,.xls" style="display: none;" />
+          </div>
+        </div>
       </div>
 
-      <!-- Cari Kayıtları Tablosu -->
-      <div *ngIf="!loading && !statusMessage" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 10px; background-color: #ffffff;">
-        <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; min-width: 500px;">
-          <thead>
-            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-              <th style="padding: 14px; text-align: left; font-weight: 700; color: #475569; width: 35%; border-bottom: 1.5px solid #e2e8f0;">Cari Kodu</th>
-              <th style="padding: 14px; text-align: left; font-weight: 700; color: #475569; width: 65%; border-bottom: 1.5px solid #e2e8f0;">Cari Ünvanı</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let cari of filteredCaris" style="border-bottom: 1px solid #f1f5f9; transition: background-color 0.2s;" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='transparent'">
-              <td style="padding: 14px; font-weight: 700; color: #0284c7;">{{ cari.cariKodu }}</td>
-              <td style="padding: 14px; font-weight: 600; color: #334155;">{{ cari.cariAdi }}</td>
-            </tr>
-            <tr *ngIf="filteredCaris.length === 0">
-              <td colspan="2" style="text-align: center; padding: 30px; color: #64748b;">
-                Listelenecek veya arama kriterine uygun cari hesap kaydı bulunamadı.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <!-- Cari Liste Tablosu -->
+      <div class="premium-card">
+        <div class="card-header">
+          <h3 class="card-title">Cari Listesi</h3>
+        </div>
+        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Cari Arama -->
+          <div style="display: flex; gap: 8px;">
+            <input type="text" 
+                   class="premium-input" 
+                   style="flex: 1; height: 38px; font-size: 12.5px; margin-top: 0;" 
+                   placeholder="Cari Ünvanı veya Cari Kodu Ara..." 
+                   [(ngModel)]="searchQuery" 
+                   (input)="onSearch()" />
+            <button type="button" class="premium-btn" (click)="fetchCaris()" [disabled]="loading" style="background-color: #64748b; width: 80px; height: 38px; font-size: 12px; margin-top: 0; padding: 0;">
+              Yenile
+            </button>
+          </div>
 
-      <!-- Daha Fazla Göster Butonu (Aşağı Kaydırınca Çıkan Floating Pill Buton) -->
-      <div *ngIf="filteredCaris.length > 0 && filteredCaris.length < totalCarisCount && !loading && isScrolledDown" 
-           style="position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 1000; animation: slideUp 0.3s ease-out;">
-        <button type="button" class="premium-btn" (click)="showMoreCaris()" 
-                style="width: 260px; height: 44px; background-color: #0284c7; color: #ffffff; border: none; border-radius: 9999px; box-shadow: 0 8px 24px rgba(2, 132, 199, 0.4); font-weight: 700; transition: transform 0.2s, background-color 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;" 
-                onmouseover="this.style.backgroundColor='#0369a1'; this.style.transform='scale(1.05)'" 
-                onmouseout="this.style.backgroundColor='#0284c7'; this.style.transform='scale(1)'">
-          <span>↓ Daha Fazla Göster</span>
-          <span style="background-color: rgba(255, 255, 255, 0.2); padding: 2px 8px; border-radius: 999px; font-size: 10px;">{{ filteredCaris.length }} / {{ totalCarisCount }}</span>
-        </button>
-      </div>
+          <!-- Yükleniyor Göstergesi -->
+          <div *ngIf="loading" style="text-align: center; padding: 20px; color: #64748b;">
+            <div class="spinner" style="margin: 0 auto 8px auto; width: 20px; height: 20px;"></div>
+            <p style="font-size: 12px;">Cari verileri çekiliyor...</p>
+          </div>
 
-      <!-- Sayfa Altı Sabit Daha Fazla Göster Butonu (Kullanıcı aşağı kaydırmasa da her zaman listenin altında dursun) -->
-      <div *ngIf="filteredCaris.length > 0 && filteredCaris.length < totalCarisCount && !loading && !isScrolledDown" 
-           style="display: flex; justify-content: center; margin-top: 20px;">
-        <button type="button" class="premium-btn" (click)="showMoreCaris()" 
-                style="width: 260px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 8px; font-weight: 600; cursor: pointer;">
-          Daha Fazla Göster ({{ filteredCaris.length }} / {{ totalCarisCount }})
-        </button>
+          <!-- Cari Tablo -->
+          <div *ngIf="!loading" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; max-height: 350px; overflow-y: auto;">
+            <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 1;">
+                  <th style="padding: 10px; text-align: left; font-weight: 700; color: #475569; width: 35%; border-bottom: 1.5px solid #e2e8f0;">Cari Kodu</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 700; color: #475569; width: 65%; border-bottom: 1.5px solid #e2e8f0;">Cari Ünvanı</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let cari of filteredCaris" style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 10px; font-weight: 700; color: #0284c7;">{{ cari.cariKodu }}</td>
+                  <td style="padding: 10px; font-weight: 600; color: #334155;">{{ cari.cariAdi }}</td>
+                </tr>
+                <tr *ngIf="filteredCaris.length === 0">
+                  <td colspan="2" style="text-align: center; padding: 20px; color: #64748b;">
+                    Cari hesap kaydı bulunamadı.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Cari Daha Fazla Göster Butonu -->
+          <div *ngIf="filteredCaris.length > 0 && filteredCaris.length < totalCarisCount && !loading" 
+               style="display: flex; justify-content: center; margin-top: 8px;">
+            <button type="button" class="premium-btn" (click)="showMoreCaris()" 
+                    style="width: 100%; max-width: 200px; height: 32px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; padding: 0; margin-top: 0;">
+              Daha Fazla Göster ({{ filteredCaris.length }} / {{ totalCarisCount }})
+            </button>
+          </div>
+        </div>
       </div>
 
     </div>
+
+    <!-- ================= SAĞ KOLON: STOK / HİZMET YÖNETİMİ ================= -->
+    <div class="column-section" style="display: flex; flex-direction: column; gap: 20px;">
+      
+      <div class="section-title-wrapper" style="border-bottom: 3px solid #10b981; padding-bottom: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+        <h2 style="font-size: 1.35rem; font-weight: 800; color: #0f172a; margin: 0; letter-spacing: -0.5px;">Stok & Hizmet Yönetimi</h2>
+        <span style="background-color: #ecfdf5; color: #047857; font-weight: 700; font-size: 11px; padding: 4px 10px; border-radius: 6px; border: 1px solid #a7f3d0;">
+          {{ totalStoksCount }} Kart
+        </span>
+      </div>
+
+      <!-- Manuel Stok Ekleme Paneli -->
+      <div class="premium-card">
+        <div class="card-header">
+          <h3 class="card-title" style="border-left-color: #10b981;">Manuel Stok / Hizmet Ekle</h3>
+          <p class="card-subtitle">Mikro veritabanına doğrudan yeni stok veya hizmet kartı açın.</p>
+        </div>
+        <div class="card-body">
+          <form (submit)="addStokManually()" style="display: flex; flex-direction: column; gap: 14px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+              <div class="form-group">
+                <label class="form-label">Kart Tipi</label>
+                <select class="premium-input" [(ngModel)]="newStokCinsi" name="newStokCinsi" style="height: 38px; padding: 0 10px; margin-top: 4px;" required>
+                  <option value="Stok">Stok Kartı</option>
+                  <option value="Hizmet">Hizmet Kartı</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Varsayılan KDV %</label>
+                <input type="number" class="premium-input" [(ngModel)]="newStokKdv" name="newStokKdv" min="0" max="100" style="height: 38px; margin-top: 4px;" required />
+              </div>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label">Stok / Hizmet Kodu</label>
+              <input type="text" class="premium-input" [(ngModel)]="newStokCode" name="newStokCode" placeholder="Örn: 150.01.001 veya HM.001" required />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Stok / Hizmet Adı</label>
+              <input type="text" class="premium-input" [(ngModel)]="newStokName" name="newStokName" placeholder="Örn: A4 Fotokopi Kağıdı veya Nakliye Bedeli" required />
+            </div>
+            
+            <button type="submit" class="premium-btn" [disabled]="stokLoading" style="background-color: #10b981;">
+              <span>Stok/Hizmet Kartı Oluştur</span>
+            </button>
+          </form>
+        </div>
+      </div>
+
+      <!-- Stok / Hizmet Liste Tablosu -->
+      <div class="premium-card">
+        <div class="card-header">
+          <h3 class="card-title" style="border-left-color: #10b981;">Stok & Hizmet Listesi</h3>
+        </div>
+        <div class="card-body" style="display: flex; flex-direction: column; gap: 14px;">
+          <!-- Stok Arama -->
+          <div style="display: flex; gap: 8px;">
+            <input type="text" 
+                   class="premium-input" 
+                   style="flex: 1; height: 38px; font-size: 12.5px; margin-top: 0;" 
+                   placeholder="Stok Adı veya Stok Kodu Ara..." 
+                   [(ngModel)]="stokSearchQuery" 
+                   (input)="onStokSearch()" />
+            <button type="button" class="premium-btn" (click)="fetchStoks()" [disabled]="stokLoading" style="background-color: #64748b; width: 80px; height: 38px; font-size: 12px; margin-top: 0; padding: 0;">
+              Yenile
+            </button>
+          </div>
+
+          <!-- Yükleniyor Göstergesi -->
+          <div *ngIf="stokLoading" style="text-align: center; padding: 20px; color: #64748b;">
+            <div class="spinner" style="margin: 0 auto 8px auto; width: 20px; height: 20px;"></div>
+            <p style="font-size: 12px;">Stok verileri çekiliyor...</p>
+          </div>
+
+          <!-- Stok Tablo -->
+          <div *ngIf="!stokLoading" style="overflow-x: auto; border: 1px solid #e2e8f0; border-radius: 8px; background-color: #ffffff; max-height: 350px; overflow-y: auto;">
+            <table class="grid-table-clean" style="width: 100%; border-collapse: collapse; font-size: 12px;">
+              <thead>
+                <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0; position: sticky; top: 0; z-index: 1;">
+                  <th style="padding: 10px; text-align: left; font-weight: 700; color: #475569; width: 25%; border-bottom: 1.5px solid #e2e8f0;">Tip</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 700; color: #475569; width: 35%; border-bottom: 1.5px solid #e2e8f0;">Kod</th>
+                  <th style="padding: 10px; text-align: left; font-weight: 700; color: #475569; width: 40%; border-bottom: 1.5px solid #e2e8f0;">Kart Adı</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let s of filteredStoks" style="border-bottom: 1px solid #f1f5f9;">
+                  <td style="padding: 10px;">
+                    <span [style.backgroundColor]="s.stoCinsi === 'Hizmet' ? '#fef3c7' : '#ecfdf5'"
+                          [style.color]="s.stoCinsi === 'Hizmet' ? '#d97706' : '#059669'"
+                          style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px;">
+                      {{ s.stoCinsi === 'Hizmet' ? 'Hizmet' : 'Stok' }}
+                    </span>
+                  </td>
+                  <td style="padding: 10px; font-weight: 700; color: #0284c7;">{{ s.stoKod }}</td>
+                  <td style="padding: 10px; font-weight: 600; color: #334155;">{{ s.stoIsim }} (KDV %{{ s.stoKdvOrani }})</td>
+                </tr>
+                <tr *ngIf="filteredStoks.length === 0">
+                  <td colspan="3" style="text-align: center; padding: 20px; color: #64748b;">
+                    Stok/Hizmet kaydı bulunamadı.
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Stok Daha Fazla Göster Butonu -->
+          <div *ngIf="filteredStoks.length > 0 && filteredStoks.length < totalStoksCount && !stokLoading" 
+               style="display: flex; justify-content: center; margin-top: 8px;">
+            <button type="button" class="premium-btn" (click)="showMoreStoks()" 
+                    style="width: 100%; max-width: 200px; height: 32px; background-color: #f1f5f9; color: #475569; border: 1.5px solid #e2e8f0; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; padding: 0; margin-top: 0;">
+              Daha Fazla Göster ({{ filteredStoks.length }} / {{ totalStoksCount }})
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
   </div>
 
 </div>

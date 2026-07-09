@@ -168,3 +168,14 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.premium-card .card-title {
+  border-left: 3px solid #0ea5e9;
+  padding-left: 10px;
+}
+
+@media (max-width: 992px) {
+  .kayitlar-grid {
+    grid-template-columns: 1fr !important;
+  }
+}

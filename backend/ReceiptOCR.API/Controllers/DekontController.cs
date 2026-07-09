@@ -85,6 +85,16 @@ public class DekontController : ControllerBase
                         cari_Doviz_Cinsi INT NULL,
                         cari_created_date DATETIME NULL
                     );
+                END
+                IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[STOK_KARTLARI]') AND type in (N'U'))
+                BEGIN
+                    CREATE TABLE STOK_KARTLARI (
+                        sto_kod NVARCHAR(50) PRIMARY KEY,
+                        sto_isim NVARCHAR(250) NOT NULL,
+                        sto_cinsi NVARCHAR(20) NOT NULL,
+                        sto_kdv_orani FLOAT NOT NULL DEFAULT 20.0,
+                        sto_created_date DATETIME NULL
+                    );
                 END", conn);
             cmd.ExecuteNonQuery();
         }
@@ -916,6 +926,112 @@ public class DekontController : ControllerBase
     }
 
     /// <summary>
+    /// Mikro veritabanındaki tüm stok/hizmet kayıtlarını listeler.
+    /// </summary>
+    [HttpGet("list-stoks")]
+    public async Task<IActionResult> ListStoks([FromQuery] int limit = 100, [FromQuery] string? search = null)
+    {
+        if (limit <= 0) limit = 100;
+        if (limit > 5000) limit = 5000;
+
+        try
+        {
+            var results = new List<object>();
+            using var conn = new SqlConnection(ConnectionString);
+            await conn.OpenAsync();
+
+            var countText = "SELECT COUNT(*) FROM STOK_KARTLARI";
+            using var countCmd = new SqlCommand(countText, conn);
+            var totalCount = (int)(await countCmd.ExecuteScalarAsync() ?? 0);
+
+            string cmdText;
+            if (!string.IsNullOrEmpty(search))
+            {
+                cmdText = $"SELECT TOP {limit} sto_kod, sto_isim, sto_cinsi, sto_kdv_orani FROM STOK_KARTLARI WHERE sto_kod LIKE @q OR sto_isim LIKE @q ORDER BY sto_created_date DESC";
+            }
+            else
+            {
+                cmdText = $"SELECT TOP {limit} sto_kod, sto_isim, sto_cinsi, sto_kdv_orani FROM STOK_KARTLARI ORDER BY sto_created_date DESC";
+            }
+
+            using var cmd = new SqlCommand(cmdText, conn);
+            if (!string.IsNullOrEmpty(search))
+            {
+                cmd.Parameters.AddWithValue("@q", $"%{search.Trim()}%");
+            }
+
+            using var reader = await cmd.ExecuteReaderAsync();
+            while (await reader.ReadAsync())
+            {
+                results.Add(new
+                {
+                    stoKod = reader.IsDBNull(0) ? "" : reader.GetString(0),
+                    stoIsim = reader.IsDBNull(1) ? "" : reader.GetString(1),
+                    stoCinsi = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                    stoKdvOrani = reader.IsDBNull(3) ? 20.0 : reader.GetDouble(3)
+                });
+            }
+
+            return Ok(ApiResponse<object>.Ok(new { list = results, totalCount = totalCount }, "Stok kayıtları listelendi."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Stok kayıtlarını listeleme hatası.");
+            return Ok(ApiResponse<object>.Ok(new { list = new List<object>(), totalCount = 0 }, "Stok tablosu bulunamadı."));
+        }
+    }
+
+    /// <summary>
+    /// Mikro SQL veritabanında yeni stok/hizmet kartı açar.
+    /// </summary>
+    [HttpPost("create-stok")]
+    public async Task<IActionResult> CreateStok([FromBody] CreateStokRequest request)
+    {
+        if (string.IsNullOrEmpty(request.StoKod) || string.IsNullOrEmpty(request.StoIsim))
+        {
+            return BadRequest(ApiResponse<object>.Fail("Stok Kodu ve İsmi zorunludur."));
+        }
+
+        try
+        {
+            using var conn = new SqlConnection(ConnectionString);
+            await conn.OpenAsync();
+
+            var checkCmdText = "SELECT COUNT(*) FROM STOK_KARTLARI WHERE sto_kod = @kod";
+            using (var checkCmd = new SqlCommand(checkCmdText, conn))
+            {
+                checkCmd.Parameters.AddWithValue("@kod", request.StoKod.Trim());
+                var exists = (int)(await checkCmd.ExecuteScalarAsync() ?? 0) > 0;
+                if (exists)
+                {
+                    return BadRequest(ApiResponse<object>.Fail("Bu Stok Kodu ile kayıtlı bir kart zaten var."));
+                }
+            }
+
+            var insertCmdText = @"
+                INSERT INTO STOK_KARTLARI (sto_kod, sto_isim, sto_cinsi, sto_kdv_orani, sto_created_date)
+                VALUES (@kod, @isim, @cinsi, @kdv, @createdDate)";
+            using (var insertCmd = new SqlCommand(insertCmdText, conn))
+            {
+                insertCmd.Parameters.AddWithValue("@kod", request.StoKod.Trim());
+                insertCmd.Parameters.AddWithValue("@isim", request.StoIsim.Trim());
+                insertCmd.Parameters.AddWithValue("@cinsi", request.StoCinsi ?? "Stok");
+                insertCmd.Parameters.AddWithValue("@kdv", request.StoKdvOrani);
+                insertCmd.Parameters.AddWithValue("@createdDate", DateTime.Now);
+
+                await insertCmd.ExecuteNonQueryAsync();
+            }
+
+            return Ok(ApiResponse<object>.Ok(null, "Stok/Hizmet kartı başarıyla oluşturuldu."));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "[API] Stok/Hizmet oluşturma hatası.");
+            return StatusCode(500, ApiResponse<object>.Fail("SQL veritabanına ekleme sırasında hata oluştu: " + ex.Message));
+        }
+    }
+
+    /// <summary>
     /// İnceleme sonrası onaylanan dekont verilerinden Mikro 010401 uyumlu Excel dosyası üretir.
     /// </summary>
     [HttpPost("export-excel")]
@@ -1353,4 +1469,12 @@ public class ParsedInvoiceLine
     public double NetTutar { get; set; }
     public double VergilerDahilToplam { get; set; }
     public string? Aciklama { get; set; }
+}
+
+public class CreateStokRequest
+{
+    public string StoKod { get; set; } = string.Empty;
+    public string StoIsim { get; set; } = string.Empty;
+    public string StoCinsi { get; set; } = "Stok";
+    public double StoKdvOrani { get; set; } = 20.0;
 }
