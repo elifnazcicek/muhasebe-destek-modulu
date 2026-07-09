@@ -237,7 +237,10 @@
 }
 
 .grid-table-clean th {
-  background: rgba(241, 245, 249, 0.6);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: #f1f5f9; /* Solid background prevents text showing behind when scrolling */
   padding: 12px 14px; /* Dolgu artırıldı */
   font-weight: 700;
   color: #475569;
