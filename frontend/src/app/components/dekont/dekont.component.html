@@ -179,7 +179,10 @@
                 <!-- Üst Satır: Giriş Değerleri -->
                 <tr>
                   <td>
-                    <input type="text" class="table-input-clean" [(ngModel)]="item.kodu" [name]="'kodu_' + i" placeholder="Mal/Hiz Kod" required />
+                    <input type="text" class="table-input-clean" [(ngModel)]="item.kodu" [name]="'kodu_' + i" (change)="onStokKoduChange(item)" (ngModelChange)="onStokKoduChange(item)" placeholder="Mal/Hiz Kod" [attr.list]="'stokList_' + i" required />
+                    <datalist [id]="'stokList_' + i">
+                      <option *ngFor="let stok of stokCards" [value]="stok.stoKod">{{ stok.stoKod }} - {{ stok.stoIsim }}</option>
+                    </datalist>
                   </td>
                   <td>
                     <input type="text" class="table-input-clean" [(ngModel)]="item.ismi" [name]="'ismi_' + i" placeholder="Hizmet Açıklaması" required />

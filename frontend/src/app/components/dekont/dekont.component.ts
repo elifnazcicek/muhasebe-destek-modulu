@@ -44,6 +44,7 @@ export class DekontComponent implements OnInit, OnDestroy {
   cariKodu: string = '';
   cariAdi: string = '';
   isCariValid: boolean = false;
+  stokCards: any[] = [];
 
   // Otomatik Alış/Satış Tespiti ve Şirket Adı
   myCompanyName: string = '';
@@ -91,6 +92,7 @@ export class DekontComponent implements OnInit, OnDestroy {
     this.currentUsername = localStorage.getItem('username') || 'Sistem Kullanıcısı';
     this.myCompanyName = localStorage.getItem('myCompanyName') || '';
     this.restoreState();
+    this.fetchStokCards();
   }
 
   ngOnDestroy(): void {
@@ -897,5 +899,30 @@ export class DekontComponent implements OnInit, OnDestroy {
         }, 'image/jpeg', 0.90);
       });
     });
+  }
+
+  fetchStokCards(): void {
+    this.http.get<any>(`${this.baseUrl}/list-stoks?limit=1000`).subscribe({
+      next: (res) => {
+        if (res.success && res.data) {
+          this.stokCards = res.data.list || [];
+        }
+      },
+      error: (err) => {
+        console.error('Error fetching stock cards:', err);
+      }
+    });
+  }
+
+  onStokKoduChange(item: InvoiceLine): void {
+    if (!item.kodu) return;
+    const matched = this.stokCards.find(s => s.stoKod.toLowerCase() === item.kodu.trim().toLowerCase());
+    if (matched) {
+      item.kodu = matched.stoKod;
+      item.ismi = matched.stoIsim;
+      item.kdvOrani = matched.stoKdvOrani;
+      item.cinsi = matched.stoCinsi === 'Hizmet' ? 'Hizmet' : 'Stok';
+      this.calculateTotals();
+    }
   }
 }
