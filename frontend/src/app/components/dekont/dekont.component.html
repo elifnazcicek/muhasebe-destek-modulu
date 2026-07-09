@@ -135,7 +135,15 @@
             <label for="cari_adi">Cari Ünvanı</label>
             <select id="cari_adi" class="form-input-clean" [(ngModel)]="cariKodu" name="cariKodu" (change)="onCariSelectChange()" style="height: 40px; font-size: 13px;" required>
               <option value="">-- Cari Ünvanı Seçiniz --</option>
-              <option *ngFor="let cari of cariCards" [value]="cari.cariKodu">{{ cari.cariAdi }} ({{ cari.cariKodu }})</option>
+              <option *ngFor="let cari of cariCards" [value]="cari.cariKodu">{{ cari.cariAdi }}</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="cari_kodu_select">Cari Kodu</label>
+            <select id="cari_kodu_select" class="form-input-clean" [(ngModel)]="cariKodu" name="cariKodu" (change)="onCariSelectChange()" style="height: 40px; font-size: 13px;" required>
+              <option value="">-- Cari Kodu Seçiniz --</option>
+              <option *ngFor="let cari of cariCards" [value]="cari.cariKodu">{{ cari.cariKodu }}</option>
             </select>
           </div>
 
@@ -153,15 +161,11 @@
             <label for="doviz_kuru">Döviz Kuru</label>
             <input type="number" id="doviz_kuru" class="form-input-clean" [(ngModel)]="dovizKuru" name="dovizKuru" step="0.0001" min="0.0001" placeholder="Kur Giriniz" required />
           </div>
-          
+
           <!-- Mikro Cari Kodu ve VKN Alanları -->
           <div class="form-group-full" style="display: flex; gap: 12px; align-items: center; background-color: rgba(255, 255, 255, 0.4); padding: 8px 12px; border-radius: 6px; border: 1px solid rgba(0, 0, 0, 0.05); font-size: 11px; font-weight: 600; flex-wrap: wrap;">
             <div>VKN/TCKN: <strong style="color: #0f172a;">{{ VKN || '-' }}</strong></div>
-            <div style="display: flex; align-items: center; gap: 6px;">
-              <span>Cari Kodu:</span>
-              <input type="text" [(ngModel)]="cariKodu" name="cariKodu" (ngModelChange)="onCariKoduChange()" placeholder="Cari Kodu Giriniz" style="width: 150px; height: 26px; font-size: 11px; font-weight: 700; padding: 2px 6px; border: 1px solid #cbd5e1; border-radius: 4px; color: #0284c7; background-color: #ffffff;" />
-              <span *ngIf="!cariKodu" style="color: #e11d48; font-size: 10px; font-weight: bold;">(Eksik - Kart Açılmalı veya Elle Girilmeli)</span>
-            </div>
+            <div>Durum: <strong [style.color]="isCariValid ? '#10b981' : '#e11d48'">{{ isCariValid ? 'Eşleşti (Geçerli)' : 'Eşleşmedi (Yeni Cari Açılmalı)' }}</strong></div>
             <button type="button" 
                     *ngIf="VKN !== ''" 
                     class="btn btn-success btn-xs" 
@@ -173,6 +177,7 @@
               <span>+ Kart Aç</span>
             </button>
           </div>
+
         </div>
 
         <!-- İşlem Satırları Grid Tablosu -->
