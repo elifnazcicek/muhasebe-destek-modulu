@@ -23,7 +23,7 @@
       <!-- Ekleme Blokları (Yan Yana) -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <!-- 1. Manuel Cari Kartı Ekle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 154px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #0284c7; padding-left: 8px;">Manuel Cari Ekle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Mikro'ya yeni cari hesap açın.</p>
@@ -40,7 +40,7 @@
         </div>
 
         <!-- 2. Excel Dosyasından Cari Yükle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; min-height: 154px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #0284c7; padding-left: 8px;">Excel'den Cari Yükle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Listeden toplu cari ekleyin.</p>
@@ -52,7 +52,7 @@
                  (dragover)="onDragOver($event)"
                  (dragleave)="onDragLeave($event)"
                  (drop)="onDrop($event)"
-                 style="height: 72px; padding: 8px; border-width: 1.5px; width: 100%;">
+                 style="height: 130px; padding: 8px; border-width: 1.5px; width: 100%;">
               <h4 style="font-size: 11px; font-weight: 700; color: #334155; margin: 0;">Excel Cari Yükle</h4>
               <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Sürükleyin veya tıklayın</p>
               <input #fileInput type="file" (change)="onFileSelected($event)" accept=".xlsx,.xls" style="display: none;" />
@@ -136,7 +136,7 @@
       <!-- Ekleme Blokları (Yan Yana) -->
       <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
         <!-- 3. Manuel Stok / Hizmet Ekle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 154px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #10b981; padding-left: 8px;">Manuel Stok Ekle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Yeni stok veya hizmet kartı açın.</p>
@@ -161,7 +161,7 @@
         </div>
 
         <!-- 4. Excel Dosyasından Stok Yükle -->
-        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; min-height: 154px;">
+        <div class="premium-card" style="padding: 16px; display: flex; flex-direction: column; justify-content: space-between; min-height: 220px;">
           <div class="card-header" style="padding-bottom: 6px; margin-bottom: 10px; border-bottom: 1.5px solid #f1f5f9;">
             <h3 class="card-title" style="font-size: 12px; border-left: 3px solid #10b981; padding-left: 8px;">Excel'den Stok Yükle</h3>
             <p class="card-subtitle" style="font-size: 9.5px;">Listeden toplu stok ekleyin.</p>
@@ -173,7 +173,7 @@
                  (dragover)="onStokDragOver($event)"
                  (dragleave)="onStokDragLeave($event)"
                  (drop)="onStokDrop($event)"
-                 style="height: 72px; padding: 8px; border-width: 1.5px; border-color: #10b981; width: 100%;">
+                 style="height: 130px; padding: 8px; border-width: 1.5px; border-color: #10b981; width: 100%;">
               <h4 style="font-size: 11px; font-weight: 700; color: #334155; margin: 0;">Excel Stok Yükle</h4>
               <p style="font-size: 9px; color: #64748b; margin: 2px 0 0 0;">Sürükleyin veya tıklayın</p>
               <input #stokFileInput type="file" (change)="onStokFileSelected($event)" accept=".xlsx,.xls" style="display: none;" />
